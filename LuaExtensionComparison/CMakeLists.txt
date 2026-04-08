@@ -44,5 +44,5 @@ install(TARGETS core c_api lua_raw lua_bridge lua_sol2
         RUNTIME DESTINATION modules
         LIBRARY DESTINATION modules)
 
-install(FILES tests/test_raw.lua tests/test_luabridge.lua tests/test_sol2.lua tests/test_threading.lua 
+install(FILES tests/test_raw.lua tests/test_luabridge.lua tests/test_sol2.lua 
         DESTINATION scripts)

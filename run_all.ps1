@@ -23,8 +23,7 @@ try {
     $testScripts = @(
         "test_raw.lua",
         "test_luabridge.lua",
-        "test_sol2.lua",
-        "test_threading.lua"
+        "test_sol2.lua"
     )
 
     foreach ($script in $testScripts) {

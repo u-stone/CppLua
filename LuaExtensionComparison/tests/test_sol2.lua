@@ -33,5 +33,18 @@ print(string.format("  - Circle area: %f", circle:area()))
 
 
 
+-- 9. Test Threading
+print("  - Testing Threading...")
+local lua_code = [[
+    local x = 0
+    for i = 1, 1000 do x = x + i end
+    print("Lua thread completed execution.")
+]]
+-- Access run_in_thread robustly
+local run_in_thread = (type(engine) == "table" and engine.run_in_thread) or run_in_thread
+run_in_thread(lua_code)
+os.execute("timeout /t 1 > nul") 
+print("  - Threading test dispatched.")
+
 print(">>> [SOL2] All tests passed!")
 

@@ -42,4 +42,15 @@ local sum = calc_batch:process_batch(data)
 assert(sum == 6.0, "Error: Batch processing failed")
 print("  - Batch processing successful")
 
+-- 5. Test Threading
+print("  - Testing Threading...")
+local lua_code = [[
+    local x = 0
+    for i = 1, 1000 do x = x + i end
+    print("Lua thread completed execution.")
+]]
+engine.run_in_thread(lua_code)
+os.execute("timeout /t 1 > nul") 
+print("  - Threading test dispatched.")
+
 print(">>> [RAW C API] All tests passed!")
