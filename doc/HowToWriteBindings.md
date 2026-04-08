@@ -1,6 +1,6 @@
 # Lua C++ 扩展开发深度指南
 
-本指南旨在帮助新手深入理解 C++ 对 Lua 的扩展。我们将详细探讨三种主流绑定方案的技术细节与实现逻辑。
+本指南旨在帮助新手深入理解 C++ 对 Lua 的扩展。我们将通过一个统一的示例场景——导出 `Calculator` 类——详细探讨三种主流绑定方案的实现逻辑。
 
 ---
 
@@ -8,43 +8,99 @@
 
 ### 方案 1：Raw C API (原生方式)
 
-这是与 Lua 交互的“母语”，所有其他高级库最终都是通过它实现的。
+这是与 Lua 交互的“母语”。你需要手动操作 Lua 的虚拟栈来传递数据，并负责内存安全。
 
-#### 核心机制
-*   **Lua 栈 (Stack)**：Lua 与 C/C++ 的所有数据交换都通过虚拟栈进行。函数调用时参数入栈，返回值也要压入栈中。
-*   **Userdata**: C++ 对象无法直接在 Lua 中表示。Raw C API 通过 `lua_newuserdata` 在 Lua 内存中申请一块空间，存放 C++ 对象的指针。
-*   **元表 (Metatable)**：为了让 Userdata 拥有“方法”，必须创建一个元表，定义 `__index`（索引方法表）和 `__gc`（垃圾回收器），从而模拟面向对象。
+#### 核心示例代码
+```cpp
+#include <lua.hpp>
+#include "Calculator.h"
 
-#### 开发心法
-虽然繁琐，但它是唯一能让你完全理解“Lua 是如何管理 C++ 对象”的方法。如果以后遇到 `require` 失败或内存非法访问，你必须有 Raw C API 的调试基础。
+// 绑定 Calculator:add(val)
+static int l_Calculator_add(lua_State* L) {
+    // 1. 从栈中获取 Userdata 并校验类型
+    Calculator** ud = (Calculator**)luaL_checkudata(L, 1, "CalculatorMeta");
+    Calculator* calc = *ud;
+    
+    // 2. 从栈中获取第二个参数
+    double val = luaL_checknumber(L, 2);
+    
+    // 3. 调用 C++ 方法
+    calc->add(val);
+    
+    // 4. 返回值个数 (这里不返回值)
+    return 0;
+}
+
+// 模块入口注册
+extern "C" __declspec(dllexport) int luaopen_lua_raw(lua_State* L) {
+    // 创建元表
+    luaL_newmetatable(L, "CalculatorMeta");
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
+    
+    // 注册方法
+    lua_pushcfunction(L, l_Calculator_add);
+    lua_setfield(L, -2, "add");
+    
+    // ... 绑定 new, gc 等 ...
+    return 1;
+}
+```
+**实现细节**：你需要显式地定义每一个函数的入栈和出栈操作，通过 `luaL_checkudata` 确保 Lua 脚本调用时传入的 `self` 参数确实是一个 `Calculator` 对象。这种方式虽然繁琐，但它是你完全控制内存和错误边界的唯一方式。
 
 ---
 
 ### 方案 2：LuaBridge (现代轻量封装)
 
-LuaBridge 是一个 Header-only 库，旨在消除冗余的栈操作代码。
+LuaBridge 通过模板元编程自动帮你处理栈操作。
 
-#### 核心机制
-*   **自动绑定映射**：它利用 C++ 模板元编程，自动将 C++ 的类、函数、成员变量映射到 Lua。
-*   **生命周期管理**：通过 `RefCountedPtr` 或直接管理 Userdata，自动处理了对象的创建与销毁。
-*   **语义映射**：使用 `getGlobalNamespace` 和 `beginClass` 链式调用，使得代码语义与 C++ 类定义高度一致。
+#### 核心示例代码
+```cpp
+#include <LuaBridge/LuaBridge.h>
+#include "Calculator.h"
 
-#### 开发心法
-这是从 Raw C API 向生产级开发跨出的重要一步。它保持了轻量级，没有编译负担，且显著减少了手动堆栈检查的代码，是中小型项目的极佳选择。
+extern "C" __declspec(dllexport) int luaopen_lua_bridge(lua_State* L) {
+    // 使用命名空间注册
+    luabridge::getGlobalNamespace(L)
+        .beginClass<Calculator>("Calculator")
+            .addConstructor<void(*) (double)>() // 绑定构造函数
+            .addFunction("add", &Calculator::add) // 自动处理栈操作
+            .addFunction("get_value", &Calculator::get_value)
+        .endClass();
+
+    return 0;
+}
+```
+**实现细节**：你不需要关注 `lua_State*` 指针或栈索引，LuaBridge 自动将 C++ 方法的参数类型映射到 Lua。例如 `&Calculator::add` 自动识别出它需要一个 `double` 参数。这种方式代码极度精简，且类型安全性得到了编译期的保障。
 
 ---
 
-### 方案 3：Sol2 (工业级标准)
+### 方案 3：Sol2 (工业界主流)
 
-Sol2 是目前现代 C++ 项目中功能最强、最受推崇的绑定库。
+Sol2 极其强大，几乎可以绑定任何现代 C++ 结构。
 
-#### 核心机制
-*   **深度集成**：它与现代 C++ 特性（如 `std::function`, 智能指针, Lambda 函数, 枚举, 枚举类等）进行了无缝集成。
-*   **极致便捷**：几乎所有的 C++ 类型都可以被自动识别并映射到 Lua，极大地减少了“胶水代码”。
-*   **高级错误处理**：Sol2 提供了非常详尽的错误栈跟踪，当 Lua 调用 C++ 出错时，它能准确告知是哪一步、什么类型匹配失败。
+#### 核心示例代码
+```cpp
+#include <sol/sol.hpp>
+#include "Calculator.h"
 
-#### 开发心法
-如果您的项目使用 C++17 或更高版本，且逻辑复杂（例如需要频繁在 Lua 和 C++ 之间传递闭包或自定义结构体），Sol2 是不二之选。虽然它会导致编译时间略微增加，但带来的开发效率提升是决定性的。
+extern "C" __declspec(dllexport) int luaopen_lua_sol2(lua_State* L) {
+    sol::state_view lua(L);
+
+    // 绑定类
+    lua.new_usertype<Calculator>("Calculator",
+        sol::constructors<Calculator(double)>(),
+        "add", &Calculator::add,
+        "get_value", &Calculator::get_value
+    );
+
+    // 绑定全局变量
+    lua["PI"] = 3.14159;
+    
+    return 0;
+}
+```
+**实现细节**：Sol2 将绑定简化为了声明式代码。`.new_usertype` 是一次性定义，绑定后在 Lua 中使用方式极其自然（如 `calc:add(50)`）。它在处理复杂类型（如 `std::vector`、自定义枚举）时的能力远超 LuaBridge，是目前工业界现代 C++ 项目处理 Lua 交互的首选。
 
 ---
 
@@ -52,16 +108,15 @@ Sol2 是目前现代 C++ 项目中功能最强、最受推崇的绑定库。
 
 | 特性 | Raw C API | LuaBridge | Sol2 |
 | :--- | :--- | :--- | :--- |
-| **代码量** | 极多 | 少 | 最少 |
-| **性能** | 最优 | 高 | 高 |
-| **依赖** | 无 | Header-only (极轻) | 第三方库 (较重) |
-| **上手难度** | 高 | 中 | 中/低 |
-| **现代 C++ 支持** | 差 | 一般 | 极好 |
+| **代码量** | 极多 (样板代码) | 少 | 最少 (声明式) |
+| **性能** | 理论最优 | 高 | 高 (极快) |
+| **现代 C++ 兼容** | 无 (仅限 C 接口) | 好 | 极好 (支持闭包/智能指针) |
+| **错误调试** | 极难 | 中 | 极好 (自动栈回溯) |
 
 ---
 
 ## 3. 给新手的进阶建议
 
-1.  **打好底层根基**：不要跳过 Raw C API 的学习，哪怕只是写一个简单的 `mylib.add`。这会建立你对 Lua 虚拟机的直觉。
-2.  **工程实践**：无论选择哪种方案，请务必在 `core/` 库和绑定代码之间引入一层 `c_api/`。这不仅是为了隔离，更是为了让您的绑定层在未来能够以极小的代价移植到 Python、C# 等其他脚本语言上。
-3.  **处理异常的艺术**：C++ 异常是 Lua 的“杀手”。在所有绑定函数中，**必须**将 C++ 的 `try-catch` 包裹在最外层，使用 `luaL_error` 终止并报错，严禁让异常在 C++ 层面直接越过 Lua 虚拟机。
+1.  **从 Raw C API 开始打基础**：在深入高级库之前，写一遍 Raw C API 的类绑定。这会让你终身受益，因为当你面对 LuaBridge 或 Sol2 无法解决的奇怪内存报错时，只有理解了栈操作的人才能快速定位。
+2.  **封装 C API 边界**：在 `core` C++ 库与绑定层之间，必须有一层稳定的 C ABI 封装。这不仅是跨语言的标准做法，也使得你的核心逻辑能够被 Python、Rust 等其他语言轻易复用。
+3.  **防范异常穿越**：**切记**，Lua 是基于 C 的，不支持 C++ 的异常栈回溯。任何在绑定层调用的 C++ 代码必须包裹在 `try-catch` 中，错误通过 `luaL_error` 返回，否则程序大概率会崩溃。
