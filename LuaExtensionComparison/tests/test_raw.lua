@@ -36,8 +36,9 @@ assert(circle ~= nil, "Error: Unable to create Circle")
 print(string.format("  - Circle area: %f", circle:area()))
 
 -- 4. Test Batch Processing
+local calc_batch = engine.new_calculator(10.0)
 local data = {1.0, 2.0, 3.0}
-local sum = calc:process_batch(data)
+local sum = calc_batch:process_batch(data)
 assert(sum == 6.0, "Error: Batch processing failed")
 print("  - Batch processing successful")
 
