@@ -17,6 +17,13 @@ extern "C" LUA_EXPORT int luaopen_lua_bridge(lua_State* L) {
             .addFunction("multiply", &Calculator::multiply)
             .addFunction("get_value", &Calculator::get_value)
             .addFunction("reset", &Calculator::reset)
+            .addFunction("process_batch", &Calculator::process_batch)
+        .endClass()
+        .beginClass<Shape>("Shape")
+            .addFunction("area", &Shape::area)
+        .endClass()
+        .deriveClass<Circle, Shape>("Circle")
+            .addConstructor<void(*) (double)>()
         .endClass();
 
     return 0;

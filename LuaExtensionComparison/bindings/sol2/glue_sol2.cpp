@@ -21,7 +21,17 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
         ),
         "multiply", &Calculator::multiply,
         "get_value", &Calculator::get_value,
-        "reset", &Calculator::reset
+        "reset", &Calculator::reset,
+        "process_batch", &Calculator::process_batch
+    );
+
+    // Polymorphism
+    lua.new_usertype<Shape>("Shape", 
+        "area", &Shape::area
+    );
+    lua.new_usertype<Circle>("Circle",
+        sol::constructors<Circle(double)>(),
+        sol::base_classes, sol::bases<Shape>()
     );
 
     lua["add"] = add;

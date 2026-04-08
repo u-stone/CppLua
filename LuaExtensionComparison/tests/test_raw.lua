@@ -30,4 +30,15 @@ calc = nil
 collectgarbage("collect") -- Force trigger GC to verify if __gc is called
 print("  - Calculator instance GC test complete, no crash occurred")
 
+-- 3. Test Polymorphism (Circle as Shape)
+local circle = engine.new_circle(5.0)
+assert(circle ~= nil, "Error: Unable to create Circle")
+print(string.format("  - Circle area: %f", circle:area()))
+
+-- 4. Test Batch Processing
+local data = {1.0, 2.0, 3.0}
+local sum = calc:process_batch(data)
+assert(sum == 6.0, "Error: Batch processing failed")
+print("  - Batch processing successful")
+
 print(">>> [RAW C API] All tests passed!")

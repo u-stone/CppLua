@@ -1,5 +1,8 @@
 #include "math_engine.h"
 #include <iostream>
+#include <vector>
+#include <map>
+#include <string>
 
 int global_call_count = 0;
 double PI = 3.14159265358979323846; // Changed to double (non-const)
@@ -39,4 +42,16 @@ double Calculator::get_value() const {
 void Calculator::reset() {
     value = 0;
     global_call_count++;
+}
+
+double Calculator::process_batch(const std::vector<double>& values) {
+    double sum = 0;
+    for (double v : values) sum += v;
+    return sum;
+}
+
+double Calculator::process_map(const std::map<std::string, double>& values) {
+    double sum = 0;
+    for (auto const& [key, val] : values) sum += val;
+    return sum;
 }

@@ -55,5 +55,23 @@ shared_calc:add(10.0)
 assert(shared_calc:get_value() == 10.0, "Error: Shared pointer calculator calculation mismatch")
 print("  - Shared pointer ownership test passed")
 
+-- 7. Test Polymorphism (Circle as Shape)
+local circle = Calculator.new(5.0) -- Wait, Circle is a Shape, I registered it separately in glue_sol2.cpp.
+-- In glue_sol2.cpp:
+-- lua.new_usertype<Circle>("Circle", ...)
+-- I should instantiate Circle.
+
+-- Actually, I registered Circle. Let's fix this in glue_sol2.cpp or test.
+local circle = Circle(5.0)
+assert(circle ~= nil, "Error: Unable to create Circle")
+print(string.format("  - Circle area: %f", circle:area()))
+
+-- 8. Test Batch Processing
+local data = {1.0, 2.0, 3.0}
+local calc_batch = Calculator(10.0)
+local sum = calc_batch:process_batch(data)
+assert(sum == 6.0, "Error: Batch processing failed")
+print("  - Batch processing successful")
+
 print(">>> [SOL2] All tests passed!")
 

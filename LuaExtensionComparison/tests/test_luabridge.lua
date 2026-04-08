@@ -35,4 +35,15 @@ else
     error("Error: Expected type error not detected")
 end
 
+-- 5. Test Polymorphism (Circle as Shape)
+local circle = Circle(5.0)
+assert(circle ~= nil, "Error: Unable to create Circle")
+print(string.format("  - Circle area: %f", circle:area()))
+
+-- 6. Test Batch Processing
+local data = {1.0, 2.0, 3.0}
+local sum = calc:process_batch(data)
+assert(sum == 6.0, "Error: Batch processing failed")
+print("  - Batch processing successful")
+
 print(">>> [LUABRIDGE] All tests passed!")
