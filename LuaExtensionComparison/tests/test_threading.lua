@@ -19,7 +19,7 @@ local lua_code = [[
 ]]
 
 print("  - Dispatching Lua code to a new thread...")
-engine.run_in_thread(lua_code)
+run_in_thread(lua_code)
 print("  - Lua code dispatched, main thread continues.")
 
 -- Small sleep to let detached thread finish (in a real test, use a shared variable/mutex)
