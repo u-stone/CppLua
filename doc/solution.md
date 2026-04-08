@@ -1,93 +1,92 @@
-要让 Lua 使用一个由 C++ 编写、CMake 构建、可作为动态库使用的模块，本质上有几条主路：
+For a C++ library built with CMake to be used as a dynamic module in Lua, there are essentially a few main paths:
 
-1. **给现有 C++ 动态库写一层 Lua 绑定层**
-2. **直接把模块做成 Lua C 扩展库**
-3. **通过 C 接口中转，再给 Lua 调用**
-4. **用自动绑定工具减少手写工作**
+1. **Write a Lua binding layer for an existing C++ dynamic library**
+2. **Make the module directly into a Lua C extension library**
+3. **Use a C interface as an intermediary, then call it from Lua**
+4. **Use automatic binding tools to reduce manual labor**
 
-业界里最常见、最稳妥的实践是：
+The most common and stable practice in the industry is:
 
-- **C++ 核心逻辑**
-- **导出稳定的 C API**
-- **Lua 侧通过 Lua C API / sol2 / LuaBridge 等做绑定**
-- **CMake 同时构建核心库和 Lua 扩展模块**
-
----
-
-# 一、先理解关键问题
-
-Lua 原生最容易对接的是 **C ABI**，不是复杂的 C++ ABI。
-
-原因：
-
-- C++ 名字修饰（name mangling）复杂
-- 不同编译器/不同标准库之间 ABI 兼容性可能有问题
-- 类、模板、异常、智能指针这些东西不能直接“无脑”暴露给 Lua
-
-所以如果你已经有一个 C++ 动态库，**不要直接把一堆 C++ 类裸暴露给 Lua**，更推荐：
-
-- 内部继续保持 C++ 实现
-- 对外封装一层 **C 风格 API**
-- Lua 绑定层调用这个 C API
-
-这是工业界很常见的做法。
+- **C++ Core Logic**
+- **Export stable C API**
+- **Binding layer in Lua via Lua C API / sol2 / LuaBridge, etc.**
+- **CMake builds both core library and Lua extension module simultaneously**
 
 ---
 
-# 二、常见接入方案
+# I. Understanding Key Issues
+
+Lua natively interacts most easily with **C ABI**, not complex C++ ABI.
+
+Reasons:
+- C++ name mangling is complex
+- ABI compatibility between different compilers/standard libraries may be an issue
+- Classes, templates, exceptions, smart pointers, etc., cannot be directly "blindly" exposed to Lua
+
+Therefore, if you already have a C++ dynamic library, **do not directly expose a bunch of C++ classes nakedly to Lua**. It is more recommended to:
+
+- Maintain C++ implementation internally
+- Encapsulate a C-style API layer externally
+- Have the Lua binding layer call this C API
+
+This is a very common practice in the industry.
 
 ---
 
-## 方案 A：写一个 Lua 原生扩展模块（最常见）
+# II. Common Integration Schemes
 
-Lua 支持加载动态库模块，比如：
+---
+
+## Scheme A: Write a Lua Native Extension Module (Most Common)
+
+Lua supports loading dynamic library modules, such as:
 
 ```lua
 local mylib = require("mylib")
 mylib.foo()
 ```
 
-这背后要求你的动态库导出一个固定入口函数：
+This requires your dynamic library to export a fixed entry function:
 
 ```c
 int luaopen_mylib(lua_State* L);
 ```
 
-Lua 在 `require("mylib")` 时会去加载对应动态库，并调用 `luaopen_mylib`。
+When Lua calls `require("mylib")`, it will load the corresponding dynamic library and call `luaopen_mylib`.
 
-### 这种方式的结构通常是：
+### The structure of this approach is usually:
 
-- `core`：你的 C++ 核心动态库
-- `lua_mylib`：Lua 扩展模块，负责把 Lua 调用转给 core
+- `core`: Your C++ core dynamic library
+- `lua_mylib`: Lua extension module, responsible for passing Lua calls to core
 
-例如：
+For example:
 
 ```text
-Lua 脚本
+Lua script
    ↓
 lua require("mylib")
    ↓
-Lua 扩展模块（luaopen_mylib）
+Lua extension module (luaopen_mylib)
    ↓
-C/C++ 包装层
+C/C++ wrapper layer
    ↓
-你的 C++ 动态库
+Your C++ dynamic library
 ```
 
-### 优点
-- 标准 Lua 生态做法
-- 可发布为 `.dll` / `.so` / `.dylib`
-- Lua 用户体验自然：`require(...)`
+### Advantages
+- Standard Lua ecosystem approach
+- Can be published as `.dll` / `.so` / `.dylib`
+- Natural Lua user experience: `require(...)`
 
-### 缺点
-- 要写绑定代码
-- 需要处理 Lua 栈、参数检查、对象生命周期
+### Disadvantages
+- Need to write binding code
+- Need to handle Lua stack, parameter checking, object lifecycle
 
 ---
 
-## 方案 B：先导出 C API，再让 Lua 调 C API（强烈推荐）
+## Scheme B: Export C API first, then let Lua call the C API (Strongly Recommended)
 
-假设你的 C++ 动态库现在是这样的：
+Assuming your C++ dynamic library is currently like this:
 
 ```cpp
 class Engine {
@@ -96,7 +95,7 @@ public:
 };
 ```
 
-不要直接让 Lua 绑这个类，而是包一层：
+Do not directly let Lua bind this class, but wrap it:
 
 ```cpp
 extern "C" {
@@ -110,7 +109,7 @@ int engine_add(EngineHandle h, int a, int b);
 }
 ```
 
-内部实现：
+Internal implementation:
 
 ```cpp
 class Engine {
@@ -135,23 +134,23 @@ int engine_add(EngineHandle h, int a, int b) {
 }
 ```
 
-然后 Lua 绑定层只需要处理这些 C 函数。
+Then the Lua binding layer only needs to handle these C functions.
 
-### 为什么这是最佳实践
-这是很多大型项目会做的：
+### Why this is Best Practice
+This is what many large projects do:
 
-- **核心层稳定**
-- **语言绑定更容易做**
-- **将来还能支持 Python / C# / Rust / Java 等**
-- **C ABI 比 C++ ABI 稳定得多**
+- **Core layer is stable**
+- **Language binding is easier to do**
+- **Can support Python / C# / Rust / Java, etc., in the future**
+- **C ABI is much more stable than C++ ABI**
 
 ---
 
-## 方案 C：使用 LuaJIT FFI 直接调用 C 接口
+## Scheme C: Use LuaJIT FFI to call C interfaces directly
 
-如果你用的是 **LuaJIT**，可以直接通过 FFI 调动态库，不一定非要写 Lua C 模块。
+If you are using **LuaJIT**, you can directly call dynamic libraries via FFI without necessarily writing a Lua C module.
 
-Lua 代码示例：
+Lua code example:
 
 ```lua
 local ffi = require("ffi")
@@ -170,32 +169,33 @@ print(lib.engine_add(h, 3, 4))
 lib.engine_destroy(h)
 ```
 
-### 优点
-- 非常快
-- 不需要写 Lua C API 绑定层
-- 适合快速集成已有 C API 动态库
+### Advantages
+- Very fast
+- No need to write Lua C API binding layer
+- Suitable for quickly integrating existing C API dynamic libraries
 
-### 缺点
-- 依赖 LuaJIT，不是标准 Lua
-- 对 C++ 直接支持不好，还是建议走 C API
-- 跨平台细节和调试要更小心
+### Disadvantages
+- Depends on LuaJIT, not standard Lua
+- Poor direct support for C++ (still recommended to go through C API)
+- Cross-platform details and debugging need more care
 
-### 适用场景
-- 内部工具
-- 性能敏感
-- 已有稳定 C 接口
+### Applicable Scenarios
+- Internal tools
+- Performance sensitive
+- Existing stable C interfaces
 
-业界里这也是常见方案，尤其在游戏、脚本系统、热更新工具链中。
+In the industry, this is also a common scheme, especially in game engines, scripting systems, and hot-reload toolchains.
 
----
-
-# 三、如果用标准 Lua，通常怎么写
 
 ---
 
-## 1. 典型的绑定函数
+# III. If using standard Lua, how is it typically written?
 
-比如导出一个简单函数：
+---
+
+## 1. Typical Binding Function
+
+For example, exporting a simple function:
 
 ```cpp
 extern "C" int mylib_add(int a, int b) {
@@ -203,7 +203,7 @@ extern "C" int mylib_add(int a, int b) {
 }
 ```
 
-Lua 绑定层：
+Lua binding layer:
 
 ```cpp
 extern "C" {
@@ -235,7 +235,7 @@ extern "C" int luaopen_mylib(lua_State* L) {
 }
 ```
 
-Lua 使用：
+Lua usage:
 
 ```lua
 local mylib = require("mylib")
@@ -244,23 +244,17 @@ print(mylib.add(1, 2))
 
 ---
 
-## 2. 如果要暴露 C++ 对象
+## 2. If you want to expose C++ objects
 
-Lua 一般通过 **userdata** 保存 C++ 对象指针。
+Lua generally saves C++ object pointers via **userdata**.
 
-例如：
+For example:
 
-- `Engine*` 放进 userdata
-- 给 userdata 绑定 metatable
-- metatable 里定义方法和 `__gc`
+- Put `Engine*` into userdata
+- Bind metatable to userdata
+- Define methods and `__gc` in metatable
 
-### 一个简化思路：
-
-- `engine.new()` -> 创建 C++ 对象
-- `engine:add(1,2)` -> 调对象方法
-- `__gc` -> Lua GC 时自动释放对象
-
-伪代码结构：
+### A simplified idea:
 
 ```cpp
 struct LuaEngine {
@@ -268,7 +262,7 @@ struct LuaEngine {
 };
 ```
 
-创建对象：
+Create object:
 
 ```cpp
 int l_engine_new(lua_State* L) {
@@ -281,7 +275,7 @@ int l_engine_new(lua_State* L) {
 }
 ```
 
-调用方法：
+Call method:
 
 ```cpp
 int l_engine_add(lua_State* L) {
@@ -293,7 +287,7 @@ int l_engine_add(lua_State* L) {
 }
 ```
 
-GC 回收：
+GC reclamation:
 
 ```cpp
 int l_engine_gc(lua_State* L) {
@@ -306,9 +300,9 @@ int l_engine_gc(lua_State* L) {
 
 ---
 
-# 四、CMake 里怎么组织
+# IV. How to organize in CMake
 
-一个常见工程结构：
+A common project structure:
 
 ```text
 project/
@@ -323,9 +317,9 @@ project/
 
 ---
 
-## 示例 CMake 结构
+## Example CMake structure
 
-### 1. 核心库
+### 1. Core library
 ```cmake
 add_library(mycore SHARED
     src/engine.cpp
@@ -335,12 +329,12 @@ add_library(mycore SHARED
 target_include_directories(mycore PUBLIC src)
 ```
 
-### 2. 查找 Lua
+### 2. Find Lua
 ```cmake
 find_package(Lua REQUIRED)
 ```
 
-### 3. Lua 模块
+### 3. Lua Module
 ```cmake
 add_library(mylib MODULE
     lua/lua_binding.cpp
@@ -350,13 +344,13 @@ target_include_directories(mylib PRIVATE ${LUA_INCLUDE_DIR})
 target_link_libraries(mylib PRIVATE mycore ${LUA_LIBRARIES})
 ```
 
-### 4. 去掉前缀
-Lua 的模块名通常希望生成：
+### 4. Remove Prefix
+Lua module names usually want to generate:
 
 - Windows: `mylib.dll`
 - Linux: `mylib.so`
 
-而不是 `libmylib.so`
+Rather than `libmylib.so`
 
 ```cmake
 set_target_properties(mylib PROPERTIES
@@ -364,7 +358,7 @@ set_target_properties(mylib PROPERTIES
 )
 ```
 
-有时还要显式设置输出目录，方便 `require()` 找到：
+Sometimes you also need to explicitly set the output directory to make it easier for `require()` to find it:
 
 ```cmake
 set_target_properties(mylib PROPERTIES
@@ -375,37 +369,37 @@ set_target_properties(mylib PROPERTIES
 
 ---
 
-# 五、有哪些主流绑定方式
+# V. What are the mainstream binding methods
 
 ---
 
-## 1. 直接使用 Lua C API
-这是最底层、最通用的方法。
+## 1. Directly use Lua C API
+This is the lowest-level and most universal method.
 
-### 优点
-- 无额外依赖
-- 控制力最强
-- 性能好
-- 最稳定
+### Advantages
+- No extra dependencies
+- Greatest control
+- Good performance
+- Most stable
 
-### 缺点
-- 开发繁琐
-- 栈操作容易写错
-- 大型接口维护成本高
+### Disadvantages
+- Tedious development
+- Stack operations are easy to write wrong
+- High maintenance cost for large interfaces
 
-### 适合
-- 接口少
-- 对依赖敏感
-- 追求可控性
+### Suitable for
+- Few interfaces
+- Dependency-sensitive
+- Seeking controllability
 
 ---
 
 ## 2. sol2
-这是现代 C++ 里非常流行的 Lua 绑定库。
+This is a very popular Lua binding library in modern C++.
 
-它让你更方便暴露类、函数、枚举等。
+It makes it more convenient to expose classes, functions, enums, etc.
 
-示意：
+Illustration:
 
 ```cpp
 #include <sol/sol.hpp>
@@ -430,133 +424,128 @@ extern "C" int luaopen_mylib(lua_State* L) {
 }
 ```
 
-### 优点
-- 写法现代
-- 绑定类非常方便
-- 降低样板代码
+### Advantages
+- Modern style
+- Very convenient to bind classes
+- Reduces boilerplate code
 
-### 缺点
-- 引入第三方库
-- 模板重，编译慢
-- 错误信息可能复杂
+### Disadvantages
+- Introduces third-party library
+- Template-heavy, slow compilation
+- Error messages can be complex
 
-### 适合
-- C++17/20 项目
-- 类接口多
-- 希望开发效率高
+### Suitable for
+- C++17/20 projects
+- Many class interfaces
+- Want high development efficiency
 
-这是业界里**非常常见**的现代方案。
-
----
-
-## 3. LuaBridge / luabind / Selene 等
-这些也是绑定库。
-
-### 实践现状
-- **LuaBridge**：还算常见，轻量一些
-- **luabind**：老项目里见得多，现在相对过时
-- **Selene**：有一些使用者，但主流度不如 sol2
-
-目前如果你问“新项目主流选什么”，通常回答是：
-
-- **低层手写 Lua C API**
-- **或者用 sol2**
+This is a **very common** modern scheme in the industry.
 
 ---
 
-## 4. SWIG / tolua++ / 自动生成绑定
-这类工具可以从接口描述或头文件生成 Lua 绑定代码。
+## 3. LuaBridge / luabind / Selene, etc.
+These are also binding libraries.
 
-### 优点
-- 适合接口量大
-- 减少重复劳动
-- 多语言绑定方便
+### Practical Status
+- **LuaBridge**: Still quite common, lighter
+- **luabind**: Often seen in old projects, relatively outdated now
+- **Selene**: Has some users, but not as mainstream as sol2
 
-### 缺点
-- 生成代码调试麻烦
-- 遇到复杂 C++ 特性容易痛苦
-- 构建链更复杂
+Currently, if you ask "what is the mainstream choice for new projects", the usual answer is:
 
-### 适合
-- 大型跨语言 SDK
-- 需要同时支持多种脚本语言
-- 接口风格较规整
+- **Low-level hand-written Lua C API**
+- **Or use sol2**
 
 ---
 
-# 六、业界最佳实践总结
+## 4. SWIG / tolua++ / Automatic binding generation
+These types of tools can generate Lua binding code from interface descriptions or header files.
+
+### Advantages
+- Suitable for large interface volume
+- Reduces repetitive labor
+- Convenient for multi-language binding
+
+### Disadvantages
+- Generated code is troublesome to debug
+- Painful when encountering complex C++ features
+- Build chain is more complex
+
+### Suitable for
+- Large cross-language SDKs
+- Need to support multiple scripting languages simultaneously
+- Interface style is relatively regular
+
 
 ---
 
-## 实践 1：核心逻辑与绑定层分离
-推荐结构：
-
-- `core/`：纯 C++ 业务逻辑
-- `c_api/`：稳定 C 封装
-- `lua_binding/`：Lua 绑定
-- `tests/`：C++ 测试和 Lua 测试
-
-这样做的好处：
-
-- Lua 绑定坏了，不影响核心库
-- 核心库升级时影响面可控
-- 容易扩展到其他语言
-
-这是非常典型的工业实践。
+# VI. Summary of Industry Best Practices
 
 ---
 
-## 实践 2：尽量导出 C API，而不是直接暴露复杂 C++ 类
-尤其如果你的动态库是 SDK 或公共组件，这点很重要。
+## Practice 1: Decouple Core Logic from Binding Layer
+Recommended structure:
 
-不要让外部脚本层直接依赖：
+- `core/`: Pure C++ business logic
+- `c_api/`: Stable C wrapper
+- `lua_binding/`: Lua binding
+- `tests/`: C++ tests and Lua tests
 
-- STL 容器布局
-- 异常类型
-- 模板实例
-- 编译器 ABI
+Benefits:
+- Lua binding breakage does not affect the core library
+- Impact when upgrading the core library is controllable
+- Easy to extend to other languages
 
-建议在边界层统一成：
-
-- 整数、浮点、字符串
-- 句柄（opaque handle）
-- 简单 struct
-- 错误码
+This is a very typical industry practice.
 
 ---
 
-## 实践 3：对象生命周期要非常明确
-Lua 垃圾回收和 C++ RAII 并不是天然等价的。
+## Practice 2: Export C API whenever possible, instead of directly exposing complex C++ classes
+Especially if your dynamic library is an SDK or a common component, this is important.
 
-要明确约定：
+Do not let the external scripting layer directly depend on:
+- STL container layouts
+- Exception types
+- Template instances
+- Compiler ABI
 
-- 谁创建对象？
-- 谁释放对象？
-- Lua GC 是否负责析构？
-- 是否允许 C++ 保留 Lua 对象引用？
-- 多线程是否涉及跨 state 调用？
-
-常见做法：
-
-- userdata 持有裸指针或智能指针
-- `__gc` 中释放
-- 禁止复制 userdata
-- 外部句柄加有效性检查
+It is recommended to unify at the boundary layer into:
+- Integers, floats, strings
+- Handles (opaque handles)
+- Simple structs
+- Error codes
 
 ---
 
-## 实践 4：错误处理不要把 C++ 异常直接穿过 Lua 边界
-**非常重要。**
+## Practice 3: Object lifecycle must be very clear
+Lua garbage collection and C++ RAII are not naturally equivalent.
 
-不要这样让异常直接飞过 C API 或 Lua C API 边界。
+Clearly agree on:
+- Who creates the object?
+- Who releases the object?
+- Does Lua GC take responsibility for destruction?
+- Is C++ allowed to retain references to Lua objects?
+- Does multi-threading involve cross-state calls?
 
-推荐：
+Common practices:
+- userdata holds raw pointers or smart pointers
+- Release in `__gc`
+- Prohibit userdata copying
+- Add validity checks for external handles
 
-- C++ 内部 catch 所有异常
-- 转成 Lua 错误：`luaL_error`
-- 或转成错误码 + 错误字符串
+---
 
-比如：
+## Practice 4: Error handling, do not let C++ exceptions directly穿过 (pass through) Lua boundaries
+**Very important.**
+
+Do not let exceptions fly directly across C API or Lua C API boundaries.
+
+Recommended:
+- C++ internally catches all exceptions
+- Convert to Lua errors: `luaL_error`
+- Or convert to error codes + error strings
+
+For example:
 
 ```cpp
 int l_add(lua_State* L) {
@@ -573,12 +562,12 @@ int l_add(lua_State* L) {
 }
 ```
 
-这是成熟项目里基本都会做的。
+This is basic in mature projects.
 
 ---
 
-## 实践 5：版本兼容要提前设计
-Lua 有多个版本：
+## Practice 5: Version compatibility must be designed in advance
+Lua has multiple versions:
 
 - Lua 5.1
 - Lua 5.2
@@ -586,47 +575,45 @@ Lua 有多个版本：
 - Lua 5.4
 - LuaJIT
 
-它们 API 存在差异。
+There are differences in their APIs.
 
-所以你要决定：
+Therefore, you have to decide:
+- Only support a specific version
+- Build a compatibility layer
+- Use third-party binding libraries to shield the differences
 
-- 只支持某个版本
-- 做兼容层
-- 用第三方绑定库屏蔽差异
-
-业界里很多项目会明确写死支持矩阵，而不是“理论支持所有 Lua”。
+In the industry, many projects explicitly write down a support matrix rather than "theoretically supporting all Lua".
 
 ---
 
-## 实践 6：Windows 下尤其注意导出符号和模块命名
-在 Windows 上做 Lua 模块时，经常会踩这些坑：
+## Practice 6: Pay special attention to exported symbols and module naming on Windows
+When doing Lua modules on Windows, you often step on these pits:
 
 - `__declspec(dllexport)`
-- 动态库名字和 `require()` 名字不一致
-- Lua 运行时位数不一致（32/64）
-- Debug/Release CRT 不一致
-- Lua 本身和扩展模块编译器不一致
+- Dynamic library name is inconsistent with `require()` name
+- Lua runtime bitness inconsistency (32/64)
+- Debug/Release CRT inconsistency
+- Lua itself and extension module compiler inconsistency
 
-如果是标准 Lua C 模块，最重要的是确保：
-- 导出了 `luaopen_xxx`
-- 生成的 dll 名字与 `require("xxx")` 匹配
-
----
-
-# 七、推荐的落地方案
-
-如果你问“我现在有一个 C++ 动态库，要给 Lua 用，最推荐怎么做”，我的建议是：
+If it is a standard Lua C module, the most important things are:
+- Exported `luaopen_xxx`
+- The generated dll name matches `require("xxx")`
 
 ---
 
-## 推荐方案 1：C++ 核心库 + C API + 手写少量 Lua 绑定
-适合：
-- 追求稳定
-- 接口不算特别庞大
-- 想要长期维护
+# VII. Recommended Landing Schemes
 
-结构：
+If you ask "I have a C++ dynamic library now, to be used by Lua, what is most recommended?", my suggestions are:
 
+---
+
+## Recommended Scheme 1: C++ Core Library + C API + Hand-written small Lua bindings
+Suitable for:
+- Pursuing stability
+- Interfaces are not particularly huge
+- Want long-term maintenance
+
+Structure:
 ```text
 C++ core
   ↓
@@ -635,54 +622,55 @@ C API wrapper
 Lua binding (Lua C API)
 ```
 
-这是最稳的。
+This is the most stable.
 
 ---
 
-## 推荐方案 2：C++ 核心库 + sol2
-适合：
-- 希望快速开发
-- C++ 类很多
-- 团队接受第三方依赖
+## Recommended Scheme 2: C++ Core Library + sol2
+Suitable for:
+- Hope for rapid development
+- Many C++ classes
+- Team accepts third-party dependencies
 
-但仍然建议：
-- 核心模块尽量保持干净
-- 不要让业务层彻底和 Lua 绑定机制耦合死
-
----
-
-## 推荐方案 3：如果使用 LuaJIT，则直接 FFI 调 C API
-适合：
-- 内部项目
-- 快速集成
-- 已有稳定 C 接口
-- 不要求标准 Lua 兼容
-
-这在实际项目里非常高效。
+However, it is still recommended:
+- Keep core modules clean
+- Do not let the business layer be completely coupled with the Lua binding mechanism
 
 ---
 
-# 八、一个简洁的业界判断标准
+## Recommended Scheme 3: If using LuaJIT, call C API directly via FFI
+Suitable for:
+- Internal projects
+- Rapid integration
+- Existing stable C interfaces
+- No strict requirement for standard Lua compatibility
 
-如果你的目标是**做一个正式可维护的 Lua 接口**，建议按下面优先级选：
-
-1. **先整理出稳定 C API**
-2. **小接口：手写 Lua C API**
-3. **大接口：sol2 或自动绑定工具**
-4. **如果是 LuaJIT 项目：优先考虑 FFI**
+This is extremely efficient in actual projects.
 
 ---
 
-# 九、你可以直接照着做的最小实施步骤
+# VIII. A concise industry judgment standard
 
-1. **保留现有 C++ 动态库**
-2. **新增一层 `extern "C"` 的 C API**
-3. **新建一个 Lua 模块工程**
-4. **导出 `luaopen_xxx`**
-5. **在 `luaopen_xxx` 里注册函数/类**
-6. **CMake 构建这个 Lua 模块并链接你的核心库**
-7. **把生成的 dll/so 放到 Lua 的 `package.cpath` 可搜索路径**
-8. **Lua 里用 `require("xxx")` 调用**
+If your goal is to **make a formal maintainable Lua interface**, it is recommended to select by the following priority:
+
+1. **Organize stable C API first**
+2. **Small interface: Hand-write Lua C API**
+3. **Large interface: sol2 or automatic binding tools**
+4. **If it is a LuaJIT project: prioritize FFI**
+
+---
+
+# IX. Minimum implementation steps you can follow directly
+
+1. **Keep existing C++ dynamic library**
+2. **Add an `extern "C"` C API layer**
+3. **Create a new Lua module project**
+4. **Export `luaopen_xxx`**
+5. **Register functions/classes in `luaopen_xxx`**
+6. **CMake build this Lua module and link your core library**
+7. **Put the generated dll/so into a searchable path of Lua's `package.cpath`**
+8. **Call via `require("xxx")` in Lua**
+
 
 ---
 

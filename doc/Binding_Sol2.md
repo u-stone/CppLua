@@ -1,26 +1,26 @@
-# Lua 扩展开发方案三：Sol2 工业级现代绑定
+# Lua Extension Development Scheme 3: Sol2 Industry-Grade Modern Binding
 
-## 1. 深度原理详解
+## 1. Deep Principle Analysis
 
-Sol2 是目前现代 C++ 项目绑定 Lua 的事实标准库。它充分利用了 C++17 及更高版本的特性，提供了一套声明式、强类型且极具表现力的 API，旨在将 Lua 扩展开发从繁琐的“胶水代码”中彻底解放出来。与 Raw C API 的底层裸操作和 LuaBridge 的轻量封装不同，Sol2 追求的是与现代 C++ 特性的深度融合。
+Sol2 is currently the de facto standard library for binding Lua in modern C++ projects. It fully utilizes C++17 and higher version features to provide a declarative, strongly typed, and highly expressive API, aiming to liberate Lua extension development from tedious "glue code". Unlike the low-level naked operations of Raw C API and the lightweight encapsulation of LuaBridge, Sol2 pursues deep integration with modern C++ features.
 
-### 核心机制一：声明式 usertype 绑定
-Sol2 最核心的概念是 `usertype`。它不是简单地将 C++ 类的方法进行罗列，而是通过元编程在编译期构建一个完整的 Lua 代理类型。当你使用 `lua.new_usertype<T>(...)` 时，Sol2 不仅会自动处理构造函数、成员函数、成员变量的映射，还会自动处理该对象在 Lua 端的元表设置（Metatable）。Sol2 在编译期通过模板分析 C++ 类的元信息，能够自动识别成员函数的重载、参数个数和类型，从而在内部实现中自动处理类型转换和参数校验。这种设计消除了手动书写胶水代码的需求，并且通过编译期的检查，许多原本在运行期才会抛出的 Bug（如参数个数不匹配）在编译阶段就能被拦截。
+### Core Mechanism 1: Declarative usertype Binding
+Sol2's most core concept is `usertype`. It does not simply list the methods of a C++ class but builds a complete Lua proxy type at compile-time via metaprogramming. When you use `lua.new_usertype<T>(...)`, Sol2 not only automatically handles constructor, member function, and member variable mapping, but also automatically handles the Metatable setup for that object on the Lua side. Sol2 analyzes the meta-information of the C++ class at compile-time through templates, capable of automatically identifying overloads, parameter counts, and types of member functions, thereby automatically handling type conversion and parameter validation in the internal implementation. This design eliminates the need for manually written glue code, and through compile-time checks, many bugs that would otherwise only be thrown at runtime (such as parameter count mismatches) can be intercepted at the compilation stage.
 
-### 核心机制二：异常传播与稳健的错误处理
-在 Lua 环境中处理 C++ 异常是极其危险的。如果 C++ 异常跳出了 Lua 调用的边界，会导致 C++ 栈和 Lua 栈的不一致，最终引发段错误（Segmentation Fault）。Sol2 建立了稳健的异常桥接机制。Sol2 的 `state` 对象内部包装了对 Lua 执行环境的 `pcall` (protected call) 的封装。当 C++ 代码中抛出 `std::exception` 时，Sol2 的底层能够自动捕获该异常，并将其优雅地转化为一个 Lua 侧可识别的错误字符串，通过 `error()` 抛出，使得 Lua 脚本能够使用 `pcall` 或 `xpcall` 优雅地处理错误，而不会导致 C++ 宿主程序进程终止。
+### Core Mechanism 2: Exception Propagation and Robust Error Handling
+Handling C++ exceptions in a Lua environment is extremely dangerous. If a C++ exception jumps out of the boundary of a Lua call, it will cause inconsistency between the C++ stack and the Lua stack, ultimately triggering a Segmentation Fault. Sol2 has established a robust exception bridging mechanism. The `state` object of Sol2 encapsulates the `pcall` (protected call) for Lua execution. When a `std::exception` is thrown in C++ code, Sol2's underlying layer can automatically catch the exception and elegantly convert it into a Lua-side recognizable error string, thrown via `error()`, allowing Lua scripts to elegantly handle errors using `pcall` or `xpcall` without causing the C++ host program process to terminate.
 
-### 核心机制三：现代 C++ 的无缝映射与类型擦除
-Sol2 的核心竞争力在于它对现代 C++ 特性的“零开销”支持。它原生支持 Lambda 表达式、函数对象（Functors）、智能指针（`std::shared_ptr` 等）、`std::vector` 等容器的直接互转。这使得开发者可以将大部分绑定工作仅通过 Lambda 函数来完成，极大地减少了为每个 C++ 函数编写独立 C 绑定函数的需要。这种设计使得绑定层代码几乎不需要关心复杂的 Lua 栈操作，完全遵循 C++ 的编程直觉。
+### Core Mechanism 3: Seamless Mapping and Type Erasure of Modern C++
+Sol2's core competitiveness lies in its "zero-overhead" support for modern C++ features. It natively supports Lambda expressions, function objects (Functors), smart pointers (e.g., `std::shared_ptr`), `std::vector`, and other containers for direct interconversion. This allows developers to complete most binding work simply through Lambda functions, greatly reducing the need to write independent C binding functions for every C++ function. This design enables binding layer code to almost not care about complex Lua stack operations, fully following C++ programming intuition.
 
 ---
 
-## 2. 详细示例代码 (Sol2)
+## 2. Detailed Example Code (Sol2)
 
-为了体现 Sol2 的强大功能，以下代码展示了如何实现一个包含构造、成员函数、全局变量、Lambda 绑定及工业级异常处理的完整示例。
+To embody the powerful functionality of Sol2, the following code demonstrates how to implement a complete example including construction, member functions, global variables, Lambda binding, and industry-grade exception handling.
 
 ```cpp
-#define SOL_ALL_SAFETIES_ON 1 // 开启所有安全检查，推荐在开发期使用，捕获非法转换
+#define SOL_ALL_SAFETIES_ON 1 // Enable all safety checks, recommended during development to catch illegal conversions
 #include <sol/sol.hpp>
 #include <iostream>
 #include <string>
@@ -28,7 +28,7 @@ Sol2 的核心竞争力在于它对现代 C++ 特性的“零开销”支持。�
 #include "../../core/math_engine.h"
 #include "../../c_api/c_math_engine.h"
 
-// 工业级辅助：定义导出宏
+// Industry-grade auxiliary: define export macro
 #ifdef _WIN32
 #define LUA_EXPORT __declspec(dllexport)
 #else
@@ -36,60 +36,63 @@ Sol2 的核心竞争力在于它对现代 C++ 特性的“零开销”支持。�
 #endif
 
 /**
- * --- 导出入口函数 ---
- * Sol2 通过 sol::state_view 包装现有的 lua_State*，
- * 无需手动操作繁琐的栈，直接提供高级的类型映射。
+ * --- Export Entry Function ---
+ * Sol2 wraps the existing lua_State* via sol::state_view,
+ * providing advanced type mapping directly without manually operating tedious stacks.
  */
 extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
-    // 将现有的 lua_State 包装为 sol::state_view
+    // Wrap existing lua_State as sol::state_view
     sol::state_view lua(L);
 
-    // 1. 声明并注册一个 usertype (类绑定)
-    // new_usertype 会自动管理该类型在 Lua 中的内存布局和元表
+    // 1. Declare and register a usertype (class binding)
+    // new_usertype automatically manages the memory layout and metatable of this type in Lua
     lua.new_usertype<Calculator>("Calculator",
-        // 绑定构造函数：匹配 Calculator(double)
-        // 自动识别构造函数参数
+        // Bind constructor: matches Calculator(double)
+        // Automatically identifies constructor parameters
         sol::constructors<Calculator(double)>(),
         
-        // 绑定成员方法，Sol2 自动处理 self 和参数转换
-        // 任何成员方法都可以直接通过指针绑定
-        "add", &Calculator::add,
+        // Bind member methods, Sol2 automatically handles self and parameter conversion
+        // Any member method can be bound directly via pointer
+        "add", sol::overload(
+            static_cast<void(Calculator::*)(double)>(&Calculator::add),
+            static_cast<void(Calculator::*)(int)>(&Calculator::add)
+        ),
         "multiply", &Calculator::multiply,
         "get_value", &Calculator::get_value,
         "reset", &Calculator::reset
     );
 
-    // 2. 绑定 Lambda 表达式作为全局函数
-    // Sol2 直接将 Lambda 转换为 Lua 可调用的 Function，自动处理闭包
+    // 2. Bind Lambda expressions as global functions
+    // Sol2 directly converts Lambda into a Lua-callable Function, automatically handling closures
     lua["add_global"] = [](double a, double b) -> double {
         return a + b;
     };
 
-    // 3. 绑定复杂函数与错误处理示例
-    // 展示了如何将 C++ 异常安全地传递给 Lua
+    // 3. Bind complex functions and exception handling example
+    // Shows how to safely pass C++ exceptions to Lua
     lua["safe_divide"] = [](double a, double b) -> double {
         if (b == 0) {
-            // Sol2 允许直接抛出 sol::error，它会被自动转换为 Lua 错误
-            // 在 Lua 中可以通过 pcall 捕获此异常
+            // Sol2 allows directly throwing sol::error, which will be automatically converted to a Lua error
+            // This exception can be caught in Lua via pcall
             throw sol::error("Division by zero in safe_divide!");
         }
         return a / b;
     };
 
-    // 4. 绑定全局变量与常量
+    // 4. Bind global variables and constants
     lua["PI"] = 3.1415926535;
     lua["app_name"] = std::string("MathEngine_Sol2_Industrial_v2.0");
 
-    // 5. 绑定复杂对象：函数式编程与闭包示例
-    // 可以绑定一个返回值的函数，Lua 中可以直接使用
+    // 5. Bind complex objects: Functional programming and closure examples
+    // Can bind a function returning a value, which can be directly used in Lua
     lua["create_adder"] = [](double base) {
         return [base](double val) -> double {
             return base + val;
         };
     };
 
-    // 6. 绑定结构体作为 Table (POD 绑定)
-    // Sol2 可以将简单的 POD 类型直接映射为 Lua Table
+    // 6. Bind struct as Table (POD binding)
+    // Sol2 can directly map simple POD types to Lua Table
     struct Config {
         int max_iters;
         bool verbose;
@@ -100,26 +103,26 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
     );
     lua["default_config"] = Config{100, true};
 
-    // 7. 绑定 C 函数处理 (调用底层 C API)
+    // 7. Bind C function processing (call underlying C API)
     lua["c_add"] = c_add;
 
-    return 0; // Sol2 的模块初始化通常返回 0，因为它是直接注册到全局表
+    return 0; // Sol2 module initialization usually returns 0, because it registers directly to the global table
 }
 ```
 
-### 深入实现细节与注意事项
-1.  **安全模式 (`SOL_ALL_SAFETIES_ON`)**: 此宏是 Sol2 的灵魂。在开发调试阶段，它会在编译期和运行期进行最严苛的类型检查。如果 Lua 试图向 C++ 传入一个 Table 而 C++ 期望 `int`，程序会在调用瞬间通过断言抛出错误，提供详细的堆栈信息，极大降低了调试难度。
-2.  **生命周期策略 (`sol::keep_alive`)**: 在处理复杂引用时，Sol2 可以通过 `sol::keep_alive` 机制确保 Lua 侧引用的 C++ 对象在被使用期间不会被提前析构。这在处理返回临时对象指针或类成员引用的场景下非常关键。
-3.  **编译性能**: Sol2 使用大量的模板元编程，在处理拥有数百个函数的庞大项目时，编译时间会显著增加。工业级做法是将绑定定义分散在多个 C++ 源文件中，并利用 PCH（预编译头文件）来大幅缓解编译压力。
-4.  **性能优势**: 尽管 Sol2 是高级抽象，但其运行时性能极高。Sol2 生成的代码极其紧凑，且编译器在进行模板展开和函数内联（Inlining）时，能获得比 Raw C API 手写代码更好的优化效果。
-5.  **工业级错误处理**: Sol2 通过 `sol::protected_function` 对 Lua 函数执行进行包装，即使调用失败，您也可以通过 `sol::protected_function_result` 获得详细的错误信息，这对生产环境调试至关重要。
+### In-depth implementation details and considerations
+1.  **Safety Mode (`SOL_ALL_SAFETIES_ON`)**: This macro is the soul of Sol2. During development and debugging, it performs the most stringent type checking at compile-time and runtime. If Lua attempts to pass a Table to C++ while C++ expects `int`, the program will throw an error via assertion at the moment of call, providing detailed stack information, greatly reducing debugging difficulty.
+2.  **Lifecycle Strategy (`sol::keep_alive`)**: When handling complex references, Sol2 can ensure that C++ objects referenced on the Lua side are not destructed prematurely while in use via the `sol::keep_alive` mechanism. This is critical in scenarios handling temporary object pointers or class member references.
+3.  **Compilation Performance**: Sol2 uses extensive template metaprogramming, which significantly increases compilation time when handling large projects with hundreds of functions. Industry-grade practice is to disperse binding definitions into multiple C++ source files and utilize PCH (Precompiled Headers) to substantially alleviate compilation pressure.
+4.  **Performance Advantages**: Despite being a high-level abstraction, Sol2's runtime performance is extremely high. The code generated by Sol2 is extremely compact, and compilers can achieve better optimization effects through template expansion and function inlining compared to manual Raw C API code.
+5.  **Industry-grade Error Handling**: Sol2 wraps Lua function execution via `sol::protected_function`. Even if the call fails, you can obtain detailed error information via `sol::protected_function_result`, which is crucial for production environment debugging.
 
-## 3. 函数重载处理
+## 3. Function Overloading Handling
 
-Sol2 提供了 `sol::overload` 工具，可以自动根据传递给 Lua 的参数类型匹配最合适的 C++ 函数重载版本。
+Sol2 provides the `sol::overload` tool, which can automatically match the most suitable C++ function overload version based on the parameter types passed to Lua.
 
 ```cpp
-// 绑定示例
+// Binding example
 "add", sol::overload(
     static_cast<void(Calculator::*)(double)>(&Calculator::add),
     static_cast<void(Calculator::*)(int)>(&Calculator::add)

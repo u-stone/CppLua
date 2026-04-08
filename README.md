@@ -1,56 +1,57 @@
-# Lua C++ 扩展开发学习工程
+# Lua C++ Extension Development Learning Project
 
-本项目用于演示和学习如何将 C++ 库扩展为 Lua 调用的动态库。通过对比三种主流的绑定方案，本项目提供了一个可扩展、可维护且符合工业标准的跨语言交互范例。
+This project demonstrates and helps learn how to extend C++ libraries as dynamic libraries callable from Lua. By comparing three mainstream binding schemes, this project provides an extensible, maintainable, and industry-standard paradigm for cross-language interaction.
 
-## 文档目录 (`doc/`)
+## Documentation Directory (`doc/`)
 
-本项目的文档存放在 `doc/` 目录下，包含以下内容：
+Project documentation is located in the `doc/` directory and contains the following:
 
-*   **[绑定方案对比与编写指南]** - 深入解析三种主流绑定方案：
-    *   [Raw C API 方案](./doc/Binding_RawCAPI.md) - 原生最底层实现。
-    *   [LuaBridge 方案](./doc/Binding_LuaBridge.md) - 现代轻量级封装实现。
-    *   [Sol2 方案](./doc/Binding_Sol2.md) - 工业级现代 C++ 绑定实现。
-*   [LuaExtensionGuide.md](./doc/LuaExtensionGuide.md) - 项目整体架构与最佳实践导引。
-*   [LuaExtensionTheory.md](./doc/solution.md) - 跨语言绑定的深度原理分析。
-*   [Advanced_Binding_Considerations.md](./doc/Advanced_Binding_Considerations.md) - 工业级 Lua 扩展开发高阶考量。
+*   **[Binding Scheme Comparison and Writing Guide]** - Deep analysis of three mainstream binding schemes:
+    *   [Raw C API Scheme](./doc/Binding_RawCAPI.md) - Native low-level implementation.
+    *   [LuaBridge Scheme](./doc/Binding_LuaBridge.md) - Modern lightweight wrapper implementation.
+    *   [Sol2 Scheme](./doc/Binding_Sol2.md) - Industry-grade modern C++ binding implementation.
+*   [LuaExtensionGuide.md](./doc/LuaExtensionGuide.md) - Project overall architecture and best practices guide.
+*   [LuaExtensionTheory.md](./doc/solution.md) - Deep analysis of cross-language binding principles.
+*   [Advanced_Binding_Considerations.md](./doc/Advanced_Binding_Considerations.md) - Advanced considerations for industry-grade Lua extension development.
 
-## 工程结构 (`LuaExtensionComparison/`)
+## Project Structure (`LuaExtensionComparison/`)
 
-该对比工程将核心逻辑与绑定实现解耦：
+This comparison project decouples core logic from binding implementation:
 
-*   `core/`: C++ 业务核心逻辑（纯净，无依赖）。
-*   `c_api/`: 稳定的 C ABI 接口层（推荐的工业级做法）。
+*   `core/`: C++ business core logic (clean, no dependencies).
+*   `c_api/`: Stable C ABI interface layer (recommended industry-grade practice).
 *   `bindings/`:
-    *   `raw_c_api/`: 手写 Lua C API 绑定。
-    *   `luabridge/`: LuaBridge 封装绑定。
-    *   `sol2/`: Sol2 封装绑定。
+    *   `raw_c_api/`: Hand-written Lua C API binding.
+    *   `luabridge/`: LuaBridge wrapper binding.
+    *   `sol2/`: Sol2 wrapper binding.
 
-## 构建说明
+## Build Instructions
 
-请使用根目录下的脚本进行构建（自动处理包含路径与链接）：
+Please use the scripts in the root directory for building (automatically handles include paths and linking):
 
 *   PowerShell: `.\build.ps1`
 *   Batch: `.\build.bat`
 
-## 如何测试
+## How to Test
 
-构建完成后，项目将自动将所有二进制文件与脚本安装至 `LuaExtensionComparison/deploy/` 目录。您可以按以下步骤进行测试：
+After the build is complete, the project will automatically install all binary files and scripts to the `LuaExtensionComparison/deploy/` directory. You can test by following these steps:
 
-1.  切换至部署目录：
+1.  Switch to the deployment directory:
     ```bash
     cd LuaExtensionComparison/deploy
     ```
 
-2.  设置环境变量以确保 Lua 能找到生成的模块：
+2.  Set environment variables to ensure Lua can find the generated modules:
     ```powershell
     # Windows PowerShell
     $env:LUA_CPATH = ".\modules\?.dll;;"
     $env:PATH = "$pwd\modules;" + $env:PATH
     ```
 
-3.  运行对应的测试脚本：
+3.  Run the corresponding test scripts:
     ```bash
     lua .\scripts\test_raw.lua
     lua .\scripts\test_luabridge.lua
     lua .\scripts\test_sol2.lua
     ```
+
