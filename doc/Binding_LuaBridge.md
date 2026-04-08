@@ -121,11 +121,11 @@ LuaBridge 不具备自动参数类型匹配能力，因此处理 C++ 函数重�
 
 如果您希望在 Lua 中通过同一个函数名调用，建议使用 C++ Lambda 包装函数作为中转，手动判断参数类型。
 
-## 4. Polymorphism and Inheritance
-LuaBridge supports C++ class inheritance. You need to use `.deriveClass` to establish the inheritance relationship.
+## 4. 多态与继承
+LuaBridge 支持 C++ 类继承。您需要使用 `.deriveClass` 来建立继承关系。
 
 ```cpp
-// Binding example
+// 绑定示例
 luabridge::getGlobalNamespace(L)
     .beginClass<Shape>("Shape")
         .addFunction("area", &Shape::area)
@@ -135,5 +135,5 @@ luabridge::getGlobalNamespace(L)
     .endClass();
 ```
 
-## 5. Complex Type Mapping (Batch Processing)
-LuaBridge does not automatically map `std::vector` to Lua tables; manual conversion is required, or you can write a helper function to take `lua_State` and do it manually.
+## 5. 复杂类型映射 (批量处理)
+LuaBridge 不会自动将 `std::vector` 映射到 Lua Table；需要手动转换，或者您可以编写一个辅助函数来获取 `lua_State` 并手动进行转换。

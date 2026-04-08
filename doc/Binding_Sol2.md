@@ -126,11 +126,11 @@ Sol2 提供了 `sol::overload` 工具，可以自动根据传递给 Lua 的参�
 )
 ```
 
-## 4. Polymorphism and Inheritance
-Sol2 supports C++ class inheritance and polymorphism. By registering base classes and derived classes, Lua can treat derived objects as base objects.
+## 4. 多态与继承
+Sol2 支持 C++ 类继承和多态。通过注册基类和派生类，Lua 可以将派生对象视为基类对象。
 
 ```cpp
-// Binding example
+// 绑定示例
 lua.new_usertype<Shape>("Shape", 
     "area", &Shape::area
 );
@@ -140,10 +140,10 @@ lua.new_usertype<Circle>("Circle",
 );
 ```
 
-## 5. Complex Type Mapping (Batch Processing)
-Sol2 automatically handles mapping of STL containers like `std::vector` to Lua Tables.
+## 5. 复杂类型映射 (批量处理)
+Sol2 自动处理 `std::vector` 等 STL 容器到 Lua Table 的映射。
 
 ```cpp
-// Binding example
+// 绑定示例
 "process_batch", &Calculator::process_batch
 ```
