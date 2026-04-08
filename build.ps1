@@ -48,6 +48,6 @@ finally {
     # Return to original position regardless of success or failure
     Pop-Location
     # Wait for user input, simulate pause
-    Read-Host "Press any key to continue..."
+    # Read-Host "Press any key to continue..."
 }
 
