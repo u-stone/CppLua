@@ -3,10 +3,11 @@
 -- ==============================================================================
 
 local engine = require("lua_sol2")
+local run_in_thread = (type(engine) == "table" and engine.run_in_thread) or run_in_thread
 print(">>> [THREADING] Starting test...")
 
 -- Verify the binding exists
-assert(engine.run_in_thread ~= nil, "Error: run_in_thread not bound")
+assert(run_in_thread ~= nil, "Error: run_in_thread not bound")
 
 -- Lua code to run in a separate thread
 local lua_code = [[
