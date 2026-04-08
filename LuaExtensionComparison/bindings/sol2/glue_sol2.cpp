@@ -13,7 +13,10 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
 
     lua.new_usertype<Calculator>("Calculator",
         sol::constructors<Calculator(double)>(),
-        "add", &Calculator::add,
+        "add", sol::overload(
+            static_cast<void(Calculator::*)(double)>(&Calculator::add),
+            static_cast<void(Calculator::*)(int)>(&Calculator::add)
+        ),
         "multiply", &Calculator::multiply,
         "get_value", &Calculator::get_value,
         "reset", &Calculator::reset

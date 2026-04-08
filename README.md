@@ -12,6 +12,7 @@
     *   [Sol2 方案](./doc/Binding_Sol2.md) - 工业级现代 C++ 绑定实现。
 *   [LuaExtensionGuide.md](./doc/LuaExtensionGuide.md) - 项目整体架构与最佳实践导引。
 *   [LuaExtensionTheory.md](./doc/solution.md) - 跨语言绑定的深度原理分析。
+*   [Overloading_Guide.md](./doc/Overloading_Guide.md) - C++ 函数重载绑定指南。
 
 ## 工程结构 (`LuaExtensionComparison/`)
 
@@ -30,3 +31,26 @@
 
 *   PowerShell: `.\build.ps1`
 *   Batch: `.\build.bat`
+
+## 如何测试
+
+构建完成后，项目将自动将所有二进制文件与脚本安装至 `LuaExtensionComparison/deploy/` 目录。您可以按以下步骤进行测试：
+
+1.  切换至部署目录：
+    ```bash
+    cd LuaExtensionComparison/deploy
+    ```
+
+2.  设置环境变量以确保 Lua 能找到生成的模块：
+    ```powershell
+    # Windows PowerShell
+    $env:LUA_CPATH = ".\modules\?.dll;;"
+    $env:PATH = "$pwd\modules;" + $env:PATH
+    ```
+
+3.  运行对应的测试脚本：
+    ```bash
+    lua .\scripts\test_raw.lua
+    lua .\scripts\test_luabridge.lua
+    lua .\scripts\test_sol2.lua
+    ```

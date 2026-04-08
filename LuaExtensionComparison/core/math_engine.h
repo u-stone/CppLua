@@ -12,6 +12,7 @@ public:
     Calculator(double initial_value);
     ~Calculator();
     void add(double val);
+    void add(int val); // Overload
     void multiply(double val);
     double get_value() const;
     void reset();

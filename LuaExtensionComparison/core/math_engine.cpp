@@ -22,6 +22,11 @@ void Calculator::add(double val) {
     global_call_count++;
 }
 
+void Calculator::add(int val) {
+    value += static_cast<double>(val);
+    global_call_count++;
+}
+
 void Calculator::multiply(double val) {
     value *= val;
     global_call_count++;
