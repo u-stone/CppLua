@@ -1,23 +1,32 @@
 # Lua 扩展开发方案一：原生 Raw C API
 
-## 1. 原理详解
+## 1. 原理深度详解
 
-原生 Raw C API 是 Lua 官方提供的一套基于 C 语言的接口，它是所有其他绑定库（如 LuaBridge, Sol2）的底层基石。理解 Raw C API 是深入掌握 Lua 扩展开发的必经之路。
+原生 Raw C API 是 Lua 官方提供的一套基于 C 语言的底层交互接口。它不依赖任何第三方库，提供了对 Lua 虚拟机最直接、最高效的控制能力。理解 Raw C API 是掌握所有高级绑定库（如 LuaBridge, Sol2）的根本，因为这些库在底层最终都是通过 Raw C API 实现对 Lua 的操作。
 
-### 核心机制：虚拟栈 (Virtual Stack)
-Lua 的核心是其**虚拟栈**。Lua 虚拟机与宿主语言（C/C++）之间的所有数据交换，都必须通过这个栈进行。例如，当 Lua 调用 `mylib.add(1, 2)` 时，Lua 解释器会将 `mylib` 对象、`add` 函数名、参数 `1` 和 `2` 依次压入栈中。C++ 编写的 `l_add` 函数需要从栈中依次弹出这些参数，执行计算，将结果压回栈，并返回告知 Lua 栈中有多少个返回值。
+### 核心机制一：虚拟栈 (Virtual Stack)
+Lua 与宿主程序（C/C++）之间的所有数据交互都通过一个**虚拟栈**进行。这是一个 LIFO (后进先出) 结构。
+*   **通信模型**：当 Lua 调用一个 C++ 函数时，Lua 虚拟机将该函数的参数依次压入栈中，并确保栈顶是该函数的参数。C++ 函数从栈中读取参数（通过栈索引，如 `1` 表示第一个参数），执行业务逻辑，然后将结果压回栈顶，并返回一个整数告知 Lua 栈中有多少个返回值。
+*   **栈索引**：索引 `1` 代表栈底的第一个参数，索引 `-1` 代表栈顶（即最后一个压入的数据）。通过这种方式，C++ 可以灵活地操作 Lua 中的任意类型数据。
 
-### 核心机制：Userdata 与 Metatable
-Lua 的数据类型（Number, String, Table, Function, Userdata）是与 C++ 类型有差异的。为了让 Lua 持有 C++ 对象，我们使用 **Userdata**。Userdata 是一块原生的内存块，我们将 C++ 对象的指针存放在其中。由于 Userdata 在 Lua 中没有任何预定义的操作，为了实现 `calc:add()` 这种语法，我们必须通过 **Metatable (元表)**。通过为 `Userdata` 设置元表，我们能在其中定义 `__index`（用于查找方法表）和 `__gc`（用于在 Lua GC 回收 Userdata 时释放 C++ 内存）。
+### 核心机制二：Userdata 与 Metatable (面向对象实现)
+Lua 原生不支持 C++ 类。为了将 C++ 对象传给 Lua，我们必须将其“装箱”。
+*   **Userdata**: Lua 的 `userdata` 类型允许在 Lua 的垃圾回收内存中分配一块 C++ 能够管理的二进制内存，用于存放 C++ 对象的指针（`Calculator*`）。
+*   **Metatable (元表)**：由于 Userdata 本身没有任何方法（如 `calc:add()` 会失败），我们需要为 Userdata 设置一个元表（Metatable）。元表是一个 Table，我们通过在其中设置 `__index` 字段指向另一个包含类方法（如 `add`）的表，从而实现了方法查找。Lua 在执行 `obj:method()` 时，会自动在 `obj` 的元表中查找名为 `method` 的函数。
 
-### 核心机制：ABI 稳定与导出
-C++ 的 ABI（二进制接口）是非常不稳定的，受编译器、标准库版本、名称修饰等影响。因此，所有导出的入口函数 `luaopen_mylib` 必须声明为 `extern "C"`，并使用 `__declspec(dllexport)` 进行显式符号导出。这确保了 Lua 解释器能够准确无误地定位到模块的初始化入口函数。
+### 核心机制三：生命周期管理 (__gc)
+C++ 使用 RAII（资源获取即初始化）来管理内存，而 Lua 使用垃圾回收 (GC)。当 Lua 中的 Userdata 实例被 GC 回收时，Lua 并不知晓其内部持有的 C++ 指针需要被 `delete`。因此，我们必须在元表中显式绑定 `__gc` 元方法。当 Lua GC 触发时，会自动调用我们在 `__gc` 中注册的 C++ 函数，由我们在该函数内手动执行 `delete`，从而避免内存泄漏。
+
+### 核心机制四：ABI 稳定与符号导出
+C++ 的名称修饰（Name Mangling）机制非常复杂，且不同编译器之间不兼容。为了让 Lua 加载动态库时能精确找到 `luaopen_mylib` 入口函数，必须：
+1.  使用 `extern "C"` 禁止 C++ 编译器对函数名进行重命名。
+2.  使用 `__declspec(dllexport)` (Windows) 或可见性属性 (Linux) 显式导出该符号。
 
 ---
 
 ## 2. 核心代码实现
 
-为了演示，我们需要导出一个具有构造函数、方法、全局变量和全局函数的 `Calculator` 类。
+这是一个完整的 Calculator 绑定示例，展示了全局函数、类导出、变量导出及 GC 回收。
 
 ```cpp
 #include <lua.hpp>
@@ -25,66 +34,68 @@ C++ 的 ABI（二进制接口）是非常不稳定的，受编译器、标准库
 #include <string>
 #include "../../core/math_engine.h"
 
-// 宏定义元表名称，用于在 Lua 中查找
+// 宏定义元表名称，用于 Lua 虚拟机内识别类型
 #define META_CALC "CalculatorMeta"
 
-// --- 辅助函数：类型安全检查 ---
+/**
+ * --- 辅助函数：类型安全检查 ---
+ * luaL_checkudata 是 Lua 提供的安全机制，检查栈上的 Userdata 
+ * 是否具有正确的元表 META_CALC。如果不匹配，直接抛出 Lua 错误。
+ */
 static Calculator* check_calc(lua_State* L, int index) {
-    // 检查栈上指定位置是否为指定元表的 Userdata
     void* ud = luaL_checkudata(L, index, META_CALC);
     if (!ud) {
         luaL_argerror(L, index, "expected Calculator object");
     }
+    // 解引用 userdata 中的 Calculator 指针
     return *static_cast<Calculator**>(ud);
 }
 
-// --- 绑定函数：Constructor (calc = Calculator.new(val)) ---
+/**
+ * --- 构造函数绑定：calc = Calculator.new(val) ---
+ * 1. lua_newuserdata: 在 Lua 堆中申请内存，存入 C++ 指针
+ * 2. new Calculator: 在 C++ 堆中创建对象
+ * 3. lua_setmetatable: 绑定元表，使其实例化后的对象具有 Calculator 的所有方法
+ */
 static int l_Calculator_new(lua_State* L) {
     double val = luaL_checknumber(L, 1);
     
-    // 1. 在 Lua 中分配内存以存放 C++ 指针
+    // 分配 userdata 空间
     Calculator** ud = static_cast<Calculator**>(lua_newuserdata(L, sizeof(Calculator*)));
-    // 2. 构造 C++ 对象
+    // 初始化 C++ 对象
     *ud = new Calculator(val);
     
-    // 3. 设置元表
+    // 获取已注册的元表，并赋给 userdata
     luaL_getmetatable(L, META_CALC);
     lua_setmetatable(L, -2);
     
-    return 1; // 将 userdata 压栈返回
+    return 1; // 将创建的 userdata 压入栈顶并返回
 }
 
-// --- 绑定方法：calc:add(val) ---
+/**
+ * --- 方法绑定：calc:add(val) ---
+ * 栈索引：1 为 self (userdata)，2 为参数 val
+ */
 static int l_Calculator_add(lua_State* L) {
     Calculator* calc = check_calc(L, 1);
     double val = luaL_checknumber(L, 2);
     calc->add(val);
-    return 0; // 无返回值
+    return 0; // 该方法无返回值
 }
 
-// --- 绑定方法：calc:get_value() ---
+/**
+ * --- 方法绑定：calc:get_value() ---
+ */
 static int l_Calculator_get_value(lua_State* L) {
     Calculator* calc = check_calc(L, 1);
-    lua_pushnumber(L, calc->get_value());
-    return 1; // 返回值
+    lua_pushnumber(L, calc->get_value()); // 将结果压栈，让 Lua 读取
+    return 1;
 }
 
-// --- 绑定方法：calc:multiply(val) ---
-static int l_Calculator_multiply(lua_State* L) {
-    Calculator* calc = check_calc(L, 1);
-    double val = luaL_checknumber(L, 2);
-    calc->multiply(val);
-    return 0;
-}
-
-// --- 绑定方法：calc:reset() ---
-static int l_Calculator_reset(lua_State* L) {
-    Calculator* calc = check_calc(L, 1);
-    calc->reset();
-    return 0;
-}
-
-// --- 绑定 GC 方法：释放 C++ 内存 (自动调用) ---
+/**
+ * --- 析构函数绑定：__gc (由 Lua GC 自动调用) ---
+ * 必须在此处理 C++ 内存释放，否则会导致严重内存泄漏
+ */
 static int l_Calculator_gc(lua_State* L) {
     Calculator** ud = static_cast<Calculator**>(lua_touserdata(L, 1));
     if (*ud) {
@@ -94,7 +105,9 @@ static int l_Calculator_gc(lua_State* L) {
     return 0;
 }
 
-// --- 绑定全局函数：add(a, b) ---
+/**
+ * --- 全局函数绑定：add(a, b) ---
+ */
 static int l_global_add(lua_State* L) {
     double a = luaL_checknumber(L, 1);
     double b = luaL_checknumber(L, 2);
@@ -102,23 +115,24 @@ static int l_global_add(lua_State* L) {
     return 1;
 }
 
-// --- 模块入口：初始化 ---
+/**
+ * --- 模块初始化入口 ---
+ * Lua require 时调用的函数，必须满足 lua_CFunction 原型
+ */
 extern "C" __declspec(dllexport) int luaopen_lua_raw(lua_State* L) {
-    // 1. 定义类方法映射
+    // 1. 定义类方法表
     luaL_Reg methods[] = {
         {"add", l_Calculator_add},
-        {"multiply", l_Calculator_multiply},
         {"get_value", l_Calculator_get_value},
-        {"reset", l_Calculator_reset},
-        {"__gc", l_Calculator_gc}, // GC 方法
+        {"__gc", l_Calculator_gc}, // GC 回收方法
         {NULL, NULL}
     };
     
-    // 2. 创建并配置元表
+    // 2. 创建并配置类元表 (Metatable)
     luaL_newmetatable(L, META_CALC);
     lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index"); // __index 指向自身，实现方法查找
-    luaL_setfuncs(L, methods, 0); // 批量注册方法
+    lua_setfield(L, -2, "__index"); // __index 指向自身，实现 calc:method() 调用
+    luaL_setfuncs(L, methods, 0); // 批量向元表中注册方法
     lua_pop(L, 1); // 弹出元表
     
     // 3. 创建模块导出表
@@ -132,11 +146,13 @@ extern "C" __declspec(dllexport) int luaopen_lua_raw(lua_State* L) {
     lua_pushcfunction(L, l_global_add);
     lua_setfield(L, -2, "add");
     
-    // 导出全局变量 (简单的数值)
+    // 导出全局常量
     lua_pushnumber(L, 3.1415926535);
     lua_setfield(L, -2, "PI");
     
-    return 1; // 返回模块表
+    return 1; // 返回表
 }
 ```
-",filePath:
+
+### 总结
+编写 Raw C API 代码时，一定要严格遵循“检查、使用、压栈、返回”的生命周期模式。任何未压栈就尝试在 Lua 层面使用的 C++ 类型都是无效的，任何在 Userdata 创建后遗漏 `__gc` 绑定的做法都是在为程序种下内存泄露的祸根。
