@@ -1,5 +1,6 @@
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
+#include <LuaBridge/Vector.h>
 #include "../core/math_engine.h"
 
 #ifdef _WIN32
