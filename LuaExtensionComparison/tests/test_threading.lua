@@ -2,7 +2,7 @@
 -- Test Script: Thread Safety Demonstration
 -- ==============================================================================
 
-local engine = ... -- Will be passed as argument
+local engine = require("lua_sol2")
 print(">>> [THREADING] Starting test...")
 
 -- Verify the binding exists
