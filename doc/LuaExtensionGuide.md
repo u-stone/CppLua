@@ -1,69 +1,69 @@
 # LuaExtensionComparison
 
-This project aims to demonstrate and compare several mainstream industry-grade implementation schemes for extending C++ core logic as Lua-callable libraries. By decoupling core logic, a stable C interface layer, and concrete binding implementations, this demo provides an extensible, maintainable, and industry-standard paradigm for cross-language interaction.
+本工程旨在演示并对比将 C++ 核心逻辑扩展为 Lua 调用库的几种主流工业级实现方案。通过分离核心逻辑、稳定 C 接口层以及具体的绑定实现，本 demo 提供了一个可扩展、可维护且符合工业标准的跨语言交互范例。
 
 ---
 
-## 1. Project Architecture (Industry Best Practices)
+## 1. 工程架构 (工业级最佳实践)
 
-This project adopts a strict **three-layer architecture** to solve ABI compatibility and maintenance challenges in C++ to Lua cross-language calls:
+本工程采用了严格的**三层架构**，以解决 C++ 与 Lua 跨语言调用中的 ABI 兼容性与维护难题：
 
-1.  **Core Layer (`core/`)**: Pure C++ business logic, containing no Lua dependencies.
-2.  **C API Layer (`c_api/`)**: Provides stable `extern "C"` interfaces, shielding C++'s name mangling and complex ABI characteristics.
-3.  **Binding Layer (`bindings/`)**: Concrete Lua binding implementations, directly calling the C API, ensuring the purity of the core logic.
+1.  **Core Layer (`core/`)**: 纯 C++ 业务逻辑，不包含任何 Lua 依赖。
+2.  **C API Layer (`c_api/`)**: 提供稳定的 `extern "C"` 接口，屏蔽 C++ 的名称修饰（name mangling）和复杂的 ABI 特性。
+3.  **Binding Layer (`bindings/`)**: 具体的 Lua 绑定实现，直接调用 C API，保证了核心逻辑的纯粹性。
 
 ---
 
-## 2. Scheme Comparison Analysis
+## 2. 方案对比分析
 
-This project implements multiple industry-mainstream binding schemes mentioned in `solution.md` through different folders, allowing you to directly compare implementation details:
+本工程通过不同的文件夹实现了 `solution.md` 中提到的多种工业界主流绑定方案，您可以直接对比其实现细节：
 
-| Directory | Binding Scheme | Technology Stack | Characteristics |
+| 目录 | 绑定方案 | 技术栈 | 特点 |
 | :--- | :--- | :--- | :--- |
-| `bindings/raw_c_api/` | **Raw C API** | Lua C API | Native implementation, lowest-level, high control |
-| `bindings/luabridge/` | **LuaBridge** | Modern C++ | Lightweight wrapper, intuitive syntax |
-| `bindings/sol2/` | **sol2** | Modern C++ | Most comprehensive features, industry-grade choice, modern style |
+| `bindings/raw_c_api/` | **Raw C API** | Lua C API | 原生实现，最底层，控制力强 |
+| `bindings/luabridge/` | **LuaBridge** | 现代 C++ | 轻量级封装，语法直观 |
+| `bindings/sol2/` | **sol2** | 现代 C++ | 功能最全，工业级首选，写法现代 |
 
-| Scheme | Binding Method | Complexity | Dependencies | Maintainability | Applicable Scenarios |
+| 方案 | 绑定方式 | 复杂度 | 依赖 | 维护性 | 适用场景 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Raw C API** | Hand-written Lua stack operations | High | None | Low (tedious) | Few interfaces, performance/dependency extreme sensitivity |
-| **LuaBridge** | Modern C++ templates | Medium | Header-only | Medium | Need to balance development efficiency and binary size |
-| **sol2** | Modern C++ templates | Low | Sol2 library | High | Large-scale interfaces, preferred for C++17/20 projects |
+| **Raw C API** | 手写 Lua 栈操作 | 高 | 无 | 低 (繁琐) | 接口少，性能/依赖极端敏感 |
+| **LuaBridge** | 现代 C++ 模板 | 中 | Header-only | 中 | 需要权衡开发效率与二进制大小 |
+| **sol2** | 现代 C++ 模板 | 低 | Sol2 库 | 高 | 大型接口，C++17/20 项目首选 |
 
 ---
 
-## 3. Core Design Principles
+## 3. 核心设计原则
 
-### A. ABI Isolation
-Do not expose complex C++ classes directly to Lua. Through the C ABI exported by `c_api/`, you can ensure that when the C++ core library is updated or changed across compilers, the Lua binding layer does not need large-scale refactoring.
+### A. ABI 隔离
+不要将复杂的 C++ 类直接暴露给 Lua。通过 `c_api/` 导出的 C ABI，可以保证 C++ 核心库在不同编译器或升级时，Lua 绑定层无需大范围重构。
 
-### B. Memory and Lifecycle Management
-*   **Lua userdata**: Used to hold pointers to C++ objects in Lua.
-*   **`__gc` metamethod**: Must be correctly implemented in the Lua binding layer to call `destroy_calculator` during Lua garbage collection to release C++ memory and prevent memory leaks.
+### B. 内存与生命周期管理
+*   **Lua userdata**: 用于在 Lua 中持有 C++ 对象的指针。
+*   **`__gc` 元方法**: 必须在 Lua 绑定层正确实现 `__gc`，以在 Lua 垃圾回收时调用 `destroy_calculator` 释放 C++ 内存，防止内存泄漏。
 
-### C. Safe Boundary Conversion
-*   **Exception Handling**: C++ exceptions must never cross the Lua boundary. All C API callers must handle potential exceptions within `try-catch` blocks and use `luaL_error` to convert them into Lua-recognizable errors.
-*   **Windows Export**: Strictly follow Windows DLL export specifications, correctly handling dynamic library symbol export via `__declspec(dllexport)` and `__declspec(dllimport)`.
+### C. 安全的边界转换
+*   **异常处理**: C++ 的异常绝不能跨越 Lua 边界。所有 C API 调用者必须在 `try-catch` 块内处理可能的异常，并使用 `luaL_error` 将其转化为 Lua 可识别的错误。
+*   **Windows 导出**: 严格遵循 Windows DLL 导出规范，通过 `__declspec(dllexport)` 和 `__declspec(dllimport)` 正确处理动态库符号导出。
 
 ---
 
-## 4. Build and Test
+## 4. 构建与测试
 
-### Build
-In the project root directory, use the provided build script:
+### 构建
+在项目根目录下，使用提供的构建脚本：
 
 ```powershell
 # Windows PowerShell
 powershell -File ".\build.ps1"
 ```
 
-This script will automatically:
-1. Clean old build artifacts.
-2. Call CMake to generate the Visual Studio project.
-3. Build `core.dll` and corresponding binding modules.
+此脚本会自动：
+1. 清理旧的构建产物。
+2. 调用 CMake 生成 Visual Studio 工程。
+3. 构建 `core.dll` 以及对应的绑定模块。
 
-### Run Tests
-Execute the test script. This script automatically sets the `PATH` environment variable to ensure Lua can correctly load all DLL dependencies:
+### 运行测试
+执行测试脚本，该脚本会自动设置 `PATH` 环境变量，确保 Lua 能够正确加载所有的 DLL 依赖：
 
 ```batch
 :: Windows Command Prompt
@@ -72,8 +72,8 @@ run_tests.bat
 
 ---
 
-## 5. How to Extend
-1.  **Add Logic**: Add C++ classes/methods in `core/`.
-2.  **Expose Interfaces**: Add corresponding C ABI functions in `c_api/`.
-3.  **Implement Binding**: Add binding logic in the corresponding `bindings/` directory.
-4.  **Build**: Re-run `build.ps1`.
+## 5. 如何扩展
+1.  **新增逻辑**: 在 `core/` 中添加 C++ 类/方法。
+2.  **暴露接口**: 在 `c_api/` 中添加对应的 C ABI 函数。
+3.  **实现绑定**: 在相应的 `bindings/` 目录下添加绑定逻辑。
+4.  **构建**: 重新运行 `build.ps1`。
