@@ -1,33 +1,33 @@
 -- ==============================================================================
--- 方案一：Raw C API 绑定测试脚本
+-- Scheme 1: Raw C API Binding Test Script
 -- ==============================================================================
 
 local engine = require("lua_raw") 
 
-print(">>> [RAW C API] 开始执行综合测试...")
+print(">>> [RAW C API] Starting comprehensive test...")
 
--- 1. 全局 API 校验
-assert(engine.PI ~= nil, "错误：全局常量 PI 未正确绑定")
-print(string.format("  - PI 常量验证成功: %f", engine.PI))
+-- 1. Global API validation
+assert(engine.PI ~= nil, "Error: Global constant PI not bound correctly")
+print(string.format("  - PI constant verification successful: %f", engine.PI))
 
 local sum = engine.add(10.0, 20.0)
-assert(sum == 30.0, "错误：全局 add 函数计算错误")
-print("  - 全局 add 函数验证成功")
+assert(sum == 30.0, "Error: Global add function calculation error")
+print("  - Global add function verification successful")
 
--- 2. Calculator 实例生命周期测试
-print("  - 开始 Calculator 实例测试...")
+-- 2. Calculator instance lifecycle test
+print("  - Starting Calculator instance test...")
 local calc = engine.new(100.0)
-assert(calc ~= nil, "错误：无法创建 Calculator 实例")
+assert(calc ~= nil, "Error: Unable to create Calculator instance")
 
--- 验证成员函数调用
+-- Verify member function call
 calc:add(50.0)
 local val = calc:get_value()
-assert(val == 150.0, "错误：加法计算结果不匹配")
-print(string.format("  - 实例计算结果验证通过: %f", val))
+assert(val == 150.0, "Error: Addition calculation result mismatch")
+print(string.format("  - Instance calculation result verified: %f", val))
 
--- 测试垃圾回收机制
+-- Test garbage collection mechanism
 calc = nil
-collectgarbage("collect") -- 强制触发 GC，验证 __gc 是否调用
-print("  - Calculator 实例 GC 测试完成，未发生崩溃")
+collectgarbage("collect") -- Force trigger GC to verify if __gc is called
+print("  - Calculator instance GC test complete, no crash occurred")
 
-print(">>> [RAW C API] 全部测试通过！")
+print(">>> [RAW C API] All tests passed!")
