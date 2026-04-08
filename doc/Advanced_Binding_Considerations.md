@@ -5,14 +5,27 @@
 ## 1. 内存所有权 (Memory Ownership)
 必须明确 Lua 中的 `userdata` 回收时，关联的 C++ 对象应如何处理。
 
-*   **Lua 持有所有权**：适用于由 Lua 创建并管理的临时对象。Lua 的 `__gc` 元方法应触发 C++ 的 `delete` 或智能指针销毁逻辑。
-*   **C++ 持有所有权**：适用于引擎内部创建的对象，Lua 仅持有引用。**严禁**在 `__gc` 中销毁该对象，否则会导致悬空指针。
-*   **最佳实践**：尽量使用 `std::shared_ptr` 或 `std::unique_ptr` 进行管理。`Sol2` 和 `LuaBridge` 均能很好地与智能指针集成，自动处理生命周期。
+*   **最佳实践**：尽量使用 `std::shared_ptr` 进行管理。`Sol2` 能自动识别 `std::shared_ptr`，实现跨语言的引用计数。
+
+```cpp
+// 示例：返回 shared_ptr，Sol2 自动接管生命周期
+lua["create_shared_calculator"] = []() -> std::shared_ptr<Calculator> {
+    return std::make_shared<Calculator>(0.0);
+};
+```
 
 ## 2. 异常传播 (Exception Propagation)
-**绝不能让 C++ 异常跳出 Lua 的执行边界。** 如果未捕获的 C++ 异常跨越了绑定层（Binding Layer），将破坏 Lua 栈的完整性，导致进程段错误。
+**绝不能让 C++ 异常跳出 Lua 的执行边界。**
 
-*   **处理策略**：所有导出的 C++ 绑定函数必须使用 `try-catch` 块包裹，捕获 `std::exception`，并使用 `luaL_error()` 或返回特定的 Lua 错误对象告知脚本层。
+*   **处理策略**：利用 Sol2 的 `sol::error` 转换机制。
+
+```cpp
+// 示例：安全除法，抛出 Lua 可捕获异常
+lua["safe_divide"] = [](double a, double b) -> double {
+    if (b == 0) throw sol::error("Division by zero!");
+    return a / b;
+};
+```
 
 ## 3. 多态与虚函数 (Polymorphism)
 Lua 无法直接感知 C++ 的运行时类型信息（RTTI）。如果您绑定了基类，但在 Lua 中通过指针持有派生类对象，直接调用基类虚函数可行，但无法直接获取派生类的特殊方法。

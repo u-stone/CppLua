@@ -1,5 +1,7 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
+#include <memory>
+#include <stdexcept>
 #include "../../core/math_engine.h"
 
 #ifdef _WIN32
@@ -25,6 +27,17 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
     lua["add"] = add;
     lua["PI"] = PI;
     lua["global_call_count"] = sol::var(global_call_count);
+
+    // Advanced: Exception Handling
+    lua["safe_divide"] = [](double a, double b) -> double {
+        if (b == 0) throw sol::error("Division by zero!");
+        return a / b;
+    };
+
+    // Advanced: Shared Pointer Ownership
+    lua["create_shared_calculator"] = []() -> std::shared_ptr<Calculator> {
+        return std::make_shared<Calculator>(0.0);
+    };
 
     return 0;
 }
