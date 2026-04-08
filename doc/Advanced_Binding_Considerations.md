@@ -47,4 +47,20 @@ Lua 无法直接感知 C++ 的运行时类型信息（RTTI）。如果您绑定�
 ## 6. 线程安全性 (Thread Safety)
 **Lua 状态机 (`lua_State`) 本身不是线程安全的。**
 
-*   **处理策略**：遵循“单一线程，单一状态机”的原则。严禁在多个线程间共享同一个 `lua_State`。如果必须并发，请为每个线程创建独立的状态机，并通过线程间消息队列进行数据交互。
+*   **处理策略**：遵循“单一线程，单一状态机”的原则。严禁在多个线程间共享同一个 `lua_State`。
+*   **最佳实践**：如果必须并发执行 Lua 脚本，请为每个线程创建独立的 `lua_State`。在 C++ 层进行多线程任务调度，并将 Lua 解释器作为局部变量在线程内部创建和销毁。
+
+```cpp
+// 示例：在独立的线程中创建和运行 Lua 状态机
+void run_lua_in_thread(std::string lua_code) {
+    std::thread t([lua_code]() {
+        lua_State* L = luaL_newstate();
+        luaL_openlibs(L);
+        if (luaL_dostring(L, lua_code.c_str()) != 0) {
+            // 处理错误
+        }
+        lua_close(L);
+    });
+    t.detach();
+}
+```

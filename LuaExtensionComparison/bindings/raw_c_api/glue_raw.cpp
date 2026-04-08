@@ -98,6 +98,12 @@ static void set_methods(lua_State* L, const luaL_Reg* methods) {
     }
 }
 
+static int l_run_lua_in_thread(lua_State* L) {
+    const char* code = luaL_checkstring(L, 1);
+    run_lua_in_thread(code);
+    return 0;
+}
+
 extern "C" LUA_EXPORT int luaopen_lua_raw(lua_State* L) {
     // Metatable for Calculator
     luaL_newmetatable(L, "CalculatorMeta");
@@ -126,12 +132,14 @@ extern "C" LUA_EXPORT int luaopen_lua_raw(lua_State* L) {
     lua_pop(L, 1);
 
     lua_newtable(L);
-    lua_pushcfunction(L, l_Calculator_new);
-    lua_setfield(L, -2, "new_calculator");
-    lua_pushcfunction(L, l_Circle_new);
-    lua_setfield(L, -2, "new_circle");
-    lua_pushcfunction(L, l_add);
-    lua_setfield(L, -2, "add");
+    luaL_Reg module_funcs[] = {
+        {"new_calculator", l_Calculator_new},
+        {"new_circle", l_Circle_new},
+        {"add", l_add},
+        {"run_in_thread", l_run_lua_in_thread},
+        {NULL, NULL}
+    };
+    set_methods(L, module_funcs);
     lua_pushnumber(L, get_PI());
     lua_setfield(L, -2, "PI");
     

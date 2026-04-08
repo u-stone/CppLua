@@ -35,6 +35,9 @@ C_EXPORT double c_add(double a, double b);
 C_EXPORT int get_global_call_count();
 C_EXPORT double get_PI();
 
+// Threading
+C_EXPORT void run_lua_in_thread(const char* lua_code);
+
 #ifdef __cplusplus
 }
 #endif

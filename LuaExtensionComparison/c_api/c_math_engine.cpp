@@ -1,6 +1,10 @@
 #include "c_math_engine.h"
 #include "../core/math_engine.h"
 #include <vector>
+#include <thread>
+#include <lua.hpp>
+#include <lauxlib.h>
+#include <lualib.h>
 
 // Calculator
 CalculatorHandle create_calculator(double initial_value) {
@@ -48,6 +52,20 @@ double get_shape_area(ShapeHandle h) {
 double calculator_process_batch(CalculatorHandle h, const double* data, int size) {
     std::vector<double> vec(data, data + size);
     return static_cast<Calculator*>(h)->process_batch(vec);
+}
+
+// Threading
+void run_lua_in_thread(const char* lua_code) {
+    std::string code = lua_code;
+    std::thread t([code]() {
+        lua_State* L = luaL_newstate();
+        luaL_openlibs(L);
+        if (luaL_dostring(L, code.c_str()) != 0) {
+            fprintf(stderr, "Lua thread error: %s\n", lua_tostring(L, -1));
+        }
+        lua_close(L);
+    });
+    t.detach();
 }
 
 // Utils
