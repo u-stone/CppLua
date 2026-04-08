@@ -16,7 +16,7 @@ print("  - Global add function verification successful")
 
 -- 2. Calculator instance lifecycle test
 print("  - Starting Calculator instance test...")
-local calc = engine.new(100.0)
+local calc = engine.new_calculator(100.0)
 assert(calc ~= nil, "Error: Unable to create Calculator instance")
 
 -- Verify member function call
