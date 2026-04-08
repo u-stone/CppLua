@@ -36,3 +36,13 @@ add_library(lua_sol2 MODULE bindings/sol2/glue_sol2.cpp)
 target_link_libraries(lua_sol2 PRIVATE core "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
 target_include_directories(lua_sol2 PRIVATE "C:/Program Files (x86)/Lua/5.1/include" ../external/sol2/include)
 set_target_properties(lua_sol2 PROPERTIES PREFIX "")
+
+# Deployment
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/deploy")
+
+install(TARGETS core c_api lua_raw lua_bridge lua_sol2 
+        RUNTIME DESTINATION modules
+        LIBRARY DESTINATION modules)
+
+install(FILES tests/test_raw.lua tests/test_luabridge.lua tests/test_sol2.lua 
+        DESTINATION scripts)

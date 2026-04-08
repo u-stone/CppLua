@@ -35,9 +35,9 @@ try {
     Write-Host "Generating project files..."
     cmake $PROJECT_ROOT -G "Visual Studio 17 2022" -A Win32
 
-    # 编译
-    Write-Host "Building..."
-    cmake --build . --config Release
+    # 编译并安装
+    Write-Host "Building and Installing..."
+    cmake --build . --config Release --target install
 
     Write-Host "Build complete."
 }

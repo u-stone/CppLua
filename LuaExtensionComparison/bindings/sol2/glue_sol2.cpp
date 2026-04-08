@@ -1,6 +1,5 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
-#include "../../c_api/c_math_engine.h"
 #include "../../core/math_engine.h"
 
 #ifdef _WIN32
