@@ -6,6 +6,8 @@ local engine = require("lua_sol2")
 local PI = (type(engine) == "table" and engine.PI) or PI
 local Calculator = (type(engine) == "table" and engine.Calculator) or Calculator
 local global_call_count = (type(engine) == "table" and engine.global_call_count) or global_call_count
+local safe_divide = (type(engine) == "table" and engine.safe_divide) or safe_divide
+local create_shared_calculator = (type(engine) == "table" and engine.create_shared_calculator) or create_shared_calculator
 
 print(">>> [SOL2] Starting comprehensive test...")
 
@@ -42,12 +44,12 @@ print(string.format("  - Current global call count: %d", global_call_count))
 print("  - Testing Advanced Bindings...")
 
 -- Test Exception Handling (safe_divide)
-local status, err = pcall(function() engine.safe_divide(10.0, 0.0) end)
+local status, err = pcall(function() safe_divide(10.0, 0.0) end)
 assert(not status, "Error: safe_divide should have thrown an error on division by zero")
 print("  - Exception handling test passed (caught expected error)")
 
 -- Test Shared Pointer Ownership (create_shared_calculator)
-local shared_calc = engine.create_shared_calculator()
+local shared_calc = create_shared_calculator()
 assert(shared_calc ~= nil, "Error: Unable to create shared_ptr calculator")
 shared_calc:add(10.0)
 assert(shared_calc:get_value() == 10.0, "Error: Shared pointer calculator calculation mismatch")
