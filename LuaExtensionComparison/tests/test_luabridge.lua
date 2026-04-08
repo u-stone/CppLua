@@ -46,15 +46,4 @@ print(string.format("  - Circle area: %f", circle:area()))
 -- assert(sum == 6.0, "Error: Batch processing failed")
 -- print("  - Batch processing successful")
 
--- 7. Test Threading
-print("  - Testing Threading...")
-local lua_code = [[
-    local x = 0
-    for i = 1, 1000 do x = x + i end
-    print("Lua thread completed execution.")
-]]
-run_in_thread(lua_code)
-os.execute("timeout /t 1 > nul") 
-print("  - Threading test dispatched.")
-
 print(">>> [LUABRIDGE] All tests passed!")

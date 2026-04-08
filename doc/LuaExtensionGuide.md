@@ -57,18 +57,22 @@
 powershell -File ".\build.ps1"
 ```
 
-此脚本会自动：
-1. 清理旧的构建产物。
-2. 调用 CMake 生成 Visual Studio 工程。
-3. 构建 `core.dll` 以及对应的绑定模块。
+该脚本会自动完成：清理旧产物 -> CMake 构建 -> 安装二进制文件到 `deploy/modules/` -> 安装 Lua 脚本到 `deploy/scripts/`。
+
+### 为什么需要 `deploy/` 目录 (工程实践说明)
+在工业级工程实践中，**构建产物 (Build Artifacts)** 与 **源代码 (Source Code)** 分离是至关重要的：
+*   **隔离性**：避免构建过程中产生的大量临时文件（obj, pdb, cmake cache）污染源码目录。
+*   **标准化部署**：`deploy/` 目录提供了一个符合发布规范的结构（二进制在 `modules/`，脚本在 `scripts/`），这极大地简化了后期 CI/CD 流水线的打包与分发。
+*   **路径可预测性**：所有模块都安装到统一的 `modules/` 下，通过配置 `LUA_CPATH` 环境变量，能够消除对特定硬盘路径的硬编码依赖。
 
 ### 运行测试
-执行测试脚本，该脚本会自动设置 `PATH` 环境变量，确保 Lua 能够正确加载所有的 DLL 依赖：
+使用 `run_all.ps1` 进行一键测试，它会自动设置环境变量并执行所有测试用例：
 
-```batch
-:: Windows Command Prompt
-run_tests.bat
+```powershell
+# 在根目录下执行
+.\run_all.ps1
 ```
+
 
 ---
 
