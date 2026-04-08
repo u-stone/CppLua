@@ -2,7 +2,7 @@
 
 $ErrorActionPreference = "Stop"
 
-# 使用更鲁棒的方式获取脚本所在目录
+# 获取脚本所在目录 (根目录)
 $SCRIPT_DIR = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($SCRIPT_DIR)) {
     if ($MyInvocation.MyCommand.Path) {
@@ -13,9 +13,12 @@ if ([string]::IsNullOrWhiteSpace($SCRIPT_DIR)) {
     $SCRIPT_DIR = Get-Location
 }
 
-Write-Host "Script directory determined as: $SCRIPT_DIR"
+# 指向项目目录
+$PROJECT_ROOT = Join-Path $SCRIPT_DIR "LuaExtensionComparison"
+$BUILD_DIR = Join-Path $PROJECT_ROOT "build"
 
-$BUILD_DIR = Join-Path $SCRIPT_DIR "build"
+Write-Host "Script directory: $SCRIPT_DIR"
+Write-Host "Project root: $PROJECT_ROOT"
 
 # 保存原始目录，以便最后返回
 Push-Location $SCRIPT_DIR
@@ -28,9 +31,9 @@ try {
     New-Item -ItemType Directory -Path $BUILD_DIR
     Set-Location $BUILD_DIR
 
-    # 生成工程 (使用相对路径 .. 指向脚本所在目录)
+    # 生成工程
     Write-Host "Generating project files..."
-    cmake .. -G "Visual Studio 17 2022" -A Win32
+    cmake $PROJECT_ROOT -G "Visual Studio 17 2022" -A Win32
 
     # 编译
     Write-Host "Building..."
