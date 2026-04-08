@@ -31,12 +31,15 @@ try {
         Write-Host "`nRunning test: $script" -ForegroundColor Yellow
         lua $scriptPath
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Test failed: $script" -ForegroundColor Red
-            exit 1
+            throw "Test failed: $script"
         }
     }
 
     Write-Host "`n=== All tests completed successfully! ===" -ForegroundColor Green
+}
+catch {
+    Write-Host "`n=== Error encountered: $_ ===" -ForegroundColor Red
+    exit 1
 }
 finally {
     Set-Location $ORIGINAL_LOCATION
