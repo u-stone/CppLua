@@ -26,8 +26,8 @@ static int l_Calculator_new(lua_State* L) {
 
 static int l_Calculator_add(lua_State* L) {
     CalculatorHandle* ud = (CalculatorHandle*)luaL_checkudata(L, 1, "CalculatorMeta");
-    if (lua_isinteger(L, 2)) {
-        calculator_add_int(*ud, lua_tointeger(L, 2));
+    if (lua_isnumber(L, 2)) {
+        calculator_add_int(*ud, (int)lua_tonumber(L, 2));
     } else {
         calculator_add(*ud, luaL_checknumber(L, 2));
     }
