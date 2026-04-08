@@ -26,14 +26,14 @@ set_target_properties(lua_raw PROPERTIES PREFIX "")
 
 # 2. LuaBridge Binding
 add_library(lua_bridge MODULE bindings/luabridge/glue_bridge.cpp)
-target_link_libraries(lua_bridge PRIVATE core "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
+target_link_libraries(lua_bridge PRIVATE core c_api "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
 target_include_directories(lua_bridge PRIVATE "C:/Program Files (x86)/Lua/5.1/include" ../external/LuaBridge/Source)
 set_target_properties(lua_bridge PROPERTIES PREFIX "")
 
 
 # 3. Sol2 Binding
 add_library(lua_sol2 MODULE bindings/sol2/glue_sol2.cpp)
-target_link_libraries(lua_sol2 PRIVATE core "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
+target_link_libraries(lua_sol2 PRIVATE core c_api "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
 target_include_directories(lua_sol2 PRIVATE "C:/Program Files (x86)/Lua/5.1/include" ../external/sol2/include)
 set_target_properties(lua_sol2 PROPERTIES PREFIX "")
 
