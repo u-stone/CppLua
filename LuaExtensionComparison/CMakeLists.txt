@@ -14,7 +14,7 @@ target_compile_definitions(core PRIVATE CORE_EXPORTS)
 
 # C API Library
 add_library(c_api SHARED c_api/c_math_engine.cpp c_api/c_math_engine.h)
-target_link_libraries(c_api PRIVATE core)
+target_link_libraries(c_api PRIVATE core "C:/Program Files (x86)/Lua/5.1/lib/lua5.1.lib")
 target_include_directories(c_api PUBLIC c_api)
 target_compile_definitions(c_api PRIVATE C_API_EXPORTS)
 
