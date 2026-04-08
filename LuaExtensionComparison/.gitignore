@@ -1,0 +1,21 @@
+# Build directories
+build/
+
+# Compiled object files
+*.o
+*.obj
+*.exp
+*.lib
+*.dll
+*.so
+*.dylib
+*.exe
+
+# Log files
+*.log
+
+# VSCode/IDE settings
+.vscode/
+.vs/
+*.user
+*.suo

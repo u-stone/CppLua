@@ -1,0 +1,32 @@
+#ifndef C_MATH_ENGINE_H
+#define C_MATH_ENGINE_H
+
+#ifdef C_API_EXPORTS
+#define C_EXPORT __declspec(dllexport)
+#else
+#define C_EXPORT __declspec(dllimport)
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Opaque handle for Calculator
+typedef void* CalculatorHandle;
+
+C_EXPORT CalculatorHandle create_calculator(double initial_value);
+C_EXPORT void destroy_calculator(CalculatorHandle h);
+C_EXPORT void calculator_add(CalculatorHandle h, double val);
+C_EXPORT void calculator_multiply(CalculatorHandle h, double val);
+C_EXPORT double calculator_get_value(CalculatorHandle h);
+C_EXPORT void calculator_reset(CalculatorHandle h);
+
+C_EXPORT double c_add(double a, double b);
+C_EXPORT int get_global_call_count();
+C_EXPORT double get_PI();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
