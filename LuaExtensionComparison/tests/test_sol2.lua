@@ -38,5 +38,20 @@ print(string.format("  - Time for 5000 add calls: %f seconds", end_time - start_
 assert(global_call_count ~= nil, "Error: Global call counter not exposed")
 print(string.format("  - Current global call count: %d", global_call_count))
 
+-- 6. Test Advanced Bindings
+print("  - Testing Advanced Bindings...")
+
+-- Test Exception Handling (safe_divide)
+local status, err = pcall(function() engine.safe_divide(10.0, 0.0) end)
+assert(not status, "Error: safe_divide should have thrown an error on division by zero")
+print("  - Exception handling test passed (caught expected error)")
+
+-- Test Shared Pointer Ownership (create_shared_calculator)
+local shared_calc = engine.create_shared_calculator()
+assert(shared_calc ~= nil, "Error: Unable to create shared_ptr calculator")
+shared_calc:add(10.0)
+assert(shared_calc:get_value() == 10.0, "Error: Shared pointer calculator calculation mismatch")
+print("  - Shared pointer ownership test passed")
+
 print(">>> [SOL2] All tests passed!")
 
