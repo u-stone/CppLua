@@ -2,6 +2,7 @@
 #include <LuaBridge/LuaBridge.h>
 #include <LuaBridge/Vector.h>
 #include "../core/math_engine.h"
+#include "../../c_api/c_math_engine.h"
 
 #ifdef _WIN32
 #define LUA_EXPORT __declspec(dllexport)
@@ -25,7 +26,8 @@ extern "C" LUA_EXPORT int luaopen_lua_bridge(lua_State* L) {
         .endClass()
         .deriveClass<Circle, Shape>("Circle")
             .addConstructor<void(*) (double)>()
-        .endClass();
+        .endClass()
+        .addFunction("run_in_thread", &run_lua_in_thread);
 
     return 0;
 }

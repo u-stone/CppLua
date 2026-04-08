@@ -3,6 +3,7 @@
 #include <memory>
 #include <stdexcept>
 #include "../../core/math_engine.h"
+#include "../../c_api/c_math_engine.h"
 
 #ifdef _WIN32
 #define LUA_EXPORT __declspec(dllexport)
@@ -48,6 +49,8 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
     lua["create_shared_calculator"] = []() -> std::shared_ptr<Calculator> {
         return std::make_shared<Calculator>(0.0);
     };
+
+    lua["run_in_thread"] = run_lua_in_thread;
 
     return 0;
 }
