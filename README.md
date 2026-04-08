@@ -12,7 +12,6 @@
     *   [Sol2 方案](./doc/Binding_Sol2.md) - 工业级现代 C++ 绑定实现。
 *   [LuaExtensionGuide.md](./doc/LuaExtensionGuide.md) - 项目整体架构与最佳实践导引。
 *   [LuaExtensionTheory.md](./doc/solution.md) - 跨语言绑定的深度原理分析。
-*   [Overloading_Guide.md](./doc/Overloading_Guide.md) - C++ 函数重载绑定指南。
 
 ## 工程结构 (`LuaExtensionComparison/`)
 

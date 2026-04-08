@@ -108,3 +108,15 @@ void RegisterSafeFunctions(lua_State* L) {
 2.  **符号导出问题**：即使使用高级绑定库，入口函数 `luaopen_lua_bridge` 依然必须是 `extern "C"` 且显式导出的，这是 Lua 动态模块的二进制规范。
 3.  **类型转换复杂性**：LuaBridge 的默认转换已经足够强大，但遇到极其复杂的嵌套结构（如多重嵌套的 Table）时，可能需要您编写自定义的 `Stack<T>` 特化版本来实现转换。虽然其默认转换能力已能处理大多数常见 C++ 类型，但遇到复杂结构时，请阅读源码中 `LuaBridge/detail` 下的类型转换逻辑。
 4.  **性能考量**：模板元编程在编译时会产生大量代码，如果绑定规模非常大（成百上千个函数），可能会导致编译时间显著增加。此时可以考虑将绑定逻辑分散在多个 C++ 文件中，或者改为使用手动栈操作实现性能敏感的核心部分，将非敏感部分交给 LuaBridge。
+
+## 3. 函数重载处理
+
+LuaBridge 不具备自动参数类型匹配能力，因此处理 C++ 函数重载最直接的方法是为每个重载版本定义显式的 Lua 名称。
+
+```cpp
+// 绑定示例
+.addFunction("add", static_cast<void(Calculator::*)(double)>(&Calculator::add))
+.addFunction("add_int", static_cast<void(Calculator::*)(int)>(&Calculator::add))
+```
+
+如果您希望在 Lua 中通过同一个函数名调用，建议使用 C++ Lambda 包装函数作为中转，手动判断参数类型。

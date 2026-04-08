@@ -113,3 +113,15 @@ extern "C" LUA_EXPORT int luaopen_lua_sol2(lua_State* L) {
 3.  **编译性能**: Sol2 使用大量的模板元编程，在处理拥有数百个函数的庞大项目时，编译时间会显著增加。工业级做法是将绑定定义分散在多个 C++ 源文件中，并利用 PCH（预编译头文件）来大幅缓解编译压力。
 4.  **性能优势**: 尽管 Sol2 是高级抽象，但其运行时性能极高。Sol2 生成的代码极其紧凑，且编译器在进行模板展开和函数内联（Inlining）时，能获得比 Raw C API 手写代码更好的优化效果。
 5.  **工业级错误处理**: Sol2 通过 `sol::protected_function` 对 Lua 函数执行进行包装，即使调用失败，您也可以通过 `sol::protected_function_result` 获得详细的错误信息，这对生产环境调试至关重要。
+
+## 3. 函数重载处理
+
+Sol2 提供了 `sol::overload` 工具，可以自动根据传递给 Lua 的参数类型匹配最合适的 C++ 函数重载版本。
+
+```cpp
+// 绑定示例
+"add", sol::overload(
+    static_cast<void(Calculator::*)(double)>(&Calculator::add),
+    static_cast<void(Calculator::*)(int)>(&Calculator::add)
+)
+```
