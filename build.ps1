@@ -14,7 +14,7 @@ if ([string]::IsNullOrWhiteSpace($SCRIPT_DIR)) {
 }
 
 # Point to project directory
-$PROJECT_ROOT = Join-Path $SCRIPT_DIR "LuaExtensionComparison"
+$PROJECT_ROOT = Join-Path $SCRIPT_DIR "CppLua"
 $BUILD_DIR = Join-Path $PROJECT_ROOT "build"
 
 Write-Host "Script directory: $SCRIPT_DIR"

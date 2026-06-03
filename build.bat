@@ -3,7 +3,7 @@ setlocal
 
 :: Set directories relative to this script
 set "SCRIPT_DIR=%~dp0"
-set "PROJECT_ROOT=%~dp0LuaExtensionComparison"
+set "PROJECT_ROOT=%~dp0CppLua"
 set "BUILD_DIR=%PROJECT_ROOT%\build"
 
 :: Switch to script directory

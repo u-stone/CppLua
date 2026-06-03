@@ -4,12 +4,12 @@ $ORIGINAL_LOCATION = Get-Location
 
 try {
     Write-Host "=== 1. Clean and Build ===" -ForegroundColor Cyan
-    if (Test-Path "LuaExtensionComparison/build") { Remove-Item -Recurse -Force "LuaExtensionComparison/build" }
-    if (Test-Path "LuaExtensionComparison/deploy") { Remove-Item -Recurse -Force "LuaExtensionComparison/deploy" }
+    if (Test-Path "CppLua/build") { Remove-Item -Recurse -Force "CppLua/build" }
+    if (Test-Path "CppLua/deploy") { Remove-Item -Recurse -Force "CppLua/deploy" }
     .\build.ps1
 
     Write-Host "`n=== 2. Configure Environment ===" -ForegroundColor Cyan
-    $deployPath = Join-Path $PSScriptRoot "LuaExtensionComparison\deploy"
+    $deployPath = Join-Path $PSScriptRoot "CppLua\deploy"
     $modulesPath = Join-Path $deployPath "modules"
     $scriptsPath = Join-Path $deployPath "scripts"
 

@@ -14,7 +14,7 @@
 *   [LuaExtensionTheory.md](./doc/solution.md) - 跨语言绑定的深度原理分析。
 *   [Advanced_Binding_Considerations.md](./doc/Advanced_Binding_Considerations.md) - 工业级 Lua 扩展开发高阶考量。
 
-## 工程结构 (`LuaExtensionComparison/`)
+## 工程结构 (`CppLua/`)
 
 该对比工程将核心逻辑与绑定实现解耦：
 
@@ -34,11 +34,11 @@
 
 ## 如何测试
 
-构建完成后，项目将自动将所有二进制文件与脚本安装至 `LuaExtensionComparison/deploy/` 目录。您可以按以下步骤进行测试：
+构建完成后，项目将自动将所有二进制文件与脚本安装至 `CppLua/deploy/` 目录。您可以按以下步骤进行测试：
 
 1.  切换至部署目录：
     ```bash
-    cd LuaExtensionComparison/deploy
+    cd CppLua/deploy
     ```
 
 2.  设置环境变量以确保 Lua 能找到生成的模块：
